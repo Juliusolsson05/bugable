@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm build --filter=landing_page",
+  "outputDirectory": "apps/landing_page/.next",
+  "framework": "nextjs"
+}
