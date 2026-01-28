@@ -48,7 +48,7 @@ export type BugCheck = z.infer<typeof BugCheckSchema>;
 export const NextActionSchema = z.object({
   complete: z.boolean(),
   reasoning: z.string().max(500),
-  action: z.string().optional() // Natural language action description for Stagehand
+  action: z.string().max(500).nullable().optional() // Natural language action description for Stagehand
 });
 
 export type NextAction = z.infer<typeof NextActionSchema>;
