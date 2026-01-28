@@ -1,41 +1,76 @@
+"use client";
+
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { motion } from "framer-motion";
+import { GlitchEffect } from "./GlitchEffect";
 
 export function Hero() {
   return (
-    <section className="relative pt-28 pb-16 md:pt-36 md:pb-24" style={{ backgroundColor: '#ddf1e6' }}>
-      <div className="container">
-        <div className="max-w-3xl mx-auto text-center mb-12">
-          <h1 className="text-2xl md:text-3xl lg:text-4xl font-semibold tracking-tight leading-[1.1] mb-4">
-            Find bugs before{" "}
-            <span className="text-gradient">your users do</span>
-          </h1>
+    <section className="relative pt-24 pb-16 md:pt-28 md:pb-20 overflow-hidden">
+      {/* Glitch effect on edges */}
+      <GlitchEffect />
 
-          <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xl mx-auto">
-            AI that continuously tests your website for UX issues, security vulnerabilities, and broken user flows.
-          </p>
+      <div className="container relative z-10">
+        <div className="max-w-3xl mx-auto text-center">
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.15] mb-4"
+          >
+            Find bugs before
+            <br />
+            <span className="text-primary">your users do</span>
+          </motion.h1>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="hero" size="lg" className="gap-2">
-              Get started
-              <ArrowRight className="h-4 w-4" />
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-base md:text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg mx-auto"
+          >
+            AI that continuously tests your website for UX issues, security
+            vulnerabilities, and broken user flows.
+          </motion.p>
+
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex flex-col sm:flex-row gap-3 justify-center mb-6"
+          >
+            <Button size="lg" className="gap-2" asChild>
+              <a href="#beta">
+                Request beta access
+                <ArrowRight className="h-4 w-4" />
+              </a>
             </Button>
-            <Button variant="hero-outline" size="lg">
-              Log in
+            <Button variant="outline" size="lg">
+              Watch demo
             </Button>
-          </div>
-        </div>
+          </motion.div>
 
-        <div className="max-w-2xl mx-auto">
-          <Image
-            src="/hero-chameleon.png"
-            alt="Bugable chameleon mascot catching bugs"
-            width={576}
-            height={400}
-            className="w-full h-auto max-w-xl mx-auto"
-            priority
-          />
+          {/* Hero Image */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="max-w-2xl mx-auto -mb-8"
+          >
+            <Image
+              src="/hero-chameleon.png"
+              alt="Bugable"
+              width={800}
+              height={600}
+              className="w-full h-auto"
+              priority
+            />
+          </motion.div>
         </div>
       </div>
     </section>
