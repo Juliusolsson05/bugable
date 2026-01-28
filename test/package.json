@@ -1,0 +1,12 @@
+{
+  "name": "bugable-test",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0"
+  }
+}

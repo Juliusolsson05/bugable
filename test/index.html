@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bugable Test - Prompt Chain</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fafafa;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #10b981;
+    }
+    .subtitle {
+      color: #a1a1aa;
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+    .chain {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .message {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #27272a;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .message-header.user { color: #60a5fa; }
+    .message-header.model { color: #a78bfa; }
+    .message-header .role {
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .message-header .actions {
+      margin-left: auto;
+      display: flex;
+      gap: 0.25rem;
+    }
+    .message-header button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+      background: transparent;
+      border: 1px solid #3f3f46;
+      color: #a1a1aa;
+      border-radius: 0.25rem;
+      cursor: pointer;
+    }
+    .message-header button:hover {
+      background: #3f3f46;
+      color: #fafafa;
+    }
+    .message-header button.delete:hover {
+      background: #ef4444;
+      border-color: #ef4444;
+    }
+    .message-body {
+      padding: 0.75rem;
+    }
+    .message-body textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 0.5rem;
+      background: #0a0a0a;
+      border: 1px solid #27272a;
+      border-radius: 0.375rem;
+      color: #fafafa;
+      font-size: 0.8rem;
+      font-family: inherit;
+      resize: vertical;
+    }
+    .message-body textarea:focus {
+      outline: none;
+      border-color: #10b981;
+    }
+    .message-body textarea:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .message-image {
+      margin-top: 0.5rem;
+    }
+    .message-image img {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 0.375rem;
+      border: 1px solid #27272a;
+    }
+    .message-image .drop-zone {
+      border: 2px dashed #27272a;
+      border-radius: 0.375rem;
+      padding: 1rem;
+      text-align: center;
+      color: #71717a;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .message-image .drop-zone:hover,
+    .message-image .drop-zone.dragover {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .add-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    button {
+      padding: 0.625rem 1rem;
+      background: #10b981;
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #059669;
+    }
+    button:disabled {
+      background: #27272a;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      background: #27272a;
+    }
+    button.secondary:hover {
+      background: #3f3f46;
+    }
+    .run-section {
+      border-top: 1px solid #27272a;
+      padding-top: 1.5rem;
+    }
+    .response {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 0.5rem;
+      white-space: pre-wrap;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .response.error {
+      border-color: #ef4444;
+      color: #f87171;
+    }
+    .response.loading {
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bugable - Prompt Chain Builder</h1>
+    <p class="subtitle">Build multi-turn conversations with images for UI/UX analysis</p>
+
+    <div class="chain" id="chain"></div>
+
+    <div class="add-buttons">
+      <button class="secondary" onclick="addMessage('user')">+ User Message</button>
+      <button class="secondary" onclick="addMessage('model')">+ Model Response</button>
+    </div>
+
+    <div class="run-section">
+      <button id="runBtn" onclick="runChain()">Run Chain</button>
+      <div id="response" class="response" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    // Default chain - UI/UX analysis setup
+    let chain = [
+      {
+        role: 'user',
+        text: `You are an expert UI/UX analyst. I will show you screenshots of web interfaces.
+
+When analyzing, focus on these issues:
+- Poor visual hierarchy or confusing layouts
+- Inconsistent spacing, alignment, or typography
+- Low contrast or accessibility issues
+- Confusing navigation or user flows
+- Missing feedback states (hover, loading, error)
+- Cluttered or overwhelming interfaces
+- Poor mobile responsiveness indicators
+
+Do NOT comment on:
+- Content/copy choices (that's not your job)
+- Business decisions
+- Features that are intentionally simple
+
+Respond concisely with specific, actionable feedback.`,
+        editable: true
+      },
+      {
+        role: 'model',
+        text: `Understood. I will analyze UI/UX screenshots and provide specific, actionable feedback focused on visual design, usability, and accessibility issues. I'll ignore content decisions and focus only on interface problems.`,
+        editable: true
+      },
+      {
+        role: 'user',
+        text: `Analyze this viewport:`,
+        editable: true,
+        hasImage: true,
+        image: null
+      }
+    ];
+
+    function renderChain() {
+      const container = document.getElementById('chain');
+      container.innerHTML = '';
+
+      chain.forEach((msg, idx) => {
+        const div = document.createElement('div');
+        div.className = 'message';
+        div.innerHTML = `
+          <div class="message-header ${msg.role}">
+            <span class="role">${msg.role}</span>
+            <span style="color: #71717a;">#${idx + 1}</span>
+            <div class="actions">
+              ${idx > 0 ? `<button onclick="moveMessage(${idx}, -1)">↑</button>` : ''}
+              ${idx < chain.length - 1 ? `<button onclick="moveMessage(${idx}, 1)">↓</button>` : ''}
+              <button class="delete" onclick="deleteMessage(${idx})">×</button>
+            </div>
+          </div>
+          <div class="message-body">
+            <textarea
+              ${msg.editable === false ? 'disabled' : ''}
+              onchange="updateMessage(${idx}, this.value)"
+            >${msg.text}</textarea>
+            ${msg.role === 'user' ? `
+              <div class="message-image" id="image-${idx}">
+                ${msg.image ? `
+                  <img src="data:${msg.image.mimeType};base64,${msg.image.data}" alt="Uploaded">
+                  <br><button class="secondary" style="margin-top:0.5rem;font-size:0.7rem;padding:0.25rem 0.5rem;" onclick="removeMessageImage(${idx})">Remove image</button>
+                ` : `
+                  <div class="drop-zone" onclick="triggerImageUpload(${idx})" id="dropzone-${idx}">
+                    Click or paste image here
+                  </div>
+                  <input type="file" id="file-${idx}" accept="image/jpeg,image/png,image/webp,image/bmp" style="display:none;" onchange="handleFileSelect(${idx}, this)">
+                `}
+              </div>
+            ` : ''}
+          </div>
+        `;
+        container.appendChild(div);
+
+        // Add drag/drop listeners
+        if (msg.role === 'user' && !msg.image) {
+          const dropzone = div.querySelector(`#dropzone-${idx}`);
+          if (dropzone) {
+            dropzone.addEventListener('dragover', (e) => {
+              e.preventDefault();
+              dropzone.classList.add('dragover');
+            });
+            dropzone.addEventListener('dragleave', () => {
+              dropzone.classList.remove('dragover');
+            });
+            dropzone.addEventListener('drop', (e) => {
+              e.preventDefault();
+              dropzone.classList.remove('dragover');
+              if (e.dataTransfer.files[0]) {
+                handleFile(idx, e.dataTransfer.files[0]);
+              }
+            });
+          }
+        }
+      });
+    }
+
+    function addMessage(role) {
+      chain.push({
+        role,
+        text: role === 'user' ? 'Enter your message...' : 'Model response...',
+        editable: true,
+        image: null
+      });
+      renderChain();
+    }
+
+    function deleteMessage(idx) {
+      if (chain.length <= 1) return;
+      chain.splice(idx, 1);
+      renderChain();
+    }
+
+    function moveMessage(idx, dir) {
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= chain.length) return;
+      [chain[idx], chain[newIdx]] = [chain[newIdx], chain[idx]];
+      renderChain();
+    }
+
+    function updateMessage(idx, text) {
+      chain[idx].text = text;
+    }
+
+    function triggerImageUpload(idx) {
+      document.getElementById(`file-${idx}`).click();
+    }
+
+    function handleFileSelect(idx, input) {
+      if (input.files[0]) {
+        handleFile(idx, input.files[0]);
+      }
+    }
+
+    function handleFile(idx, file) {
+      const allowed = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/bmp']);
+      if (!allowed.has(file.type)) {
+        alert(`Unsupported: ${file.type}. Use JPG/PNG/WebP/BMP.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        chain[idx].image = {
+          mimeType: file.type,
+          data: dataUrl.split(',')[1]
+        };
+        renderChain();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeMessageImage(idx) {
+      chain[idx].image = null;
+      renderChain();
+    }
+
+    // Global paste handler
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            // Find last user message without image
+            for (let i = chain.length - 1; i >= 0; i--) {
+              if (chain[i].role === 'user' && !chain[i].image) {
+                handleFile(i, file);
+                break;
+              }
+            }
+          }
+          break;
+        }
+      }
+    });
+
+    async function runChain() {
+      const responseEl = document.getElementById('response');
+      const runBtn = document.getElementById('runBtn');
+
+      // Build contents array for Gemini
+      const contents = chain.map(msg => {
+        const parts = [];
+
+        if (msg.image) {
+          parts.push({
+            inlineData: {
+              mimeType: msg.image.mimeType,
+              data: msg.image.data
+            }
+          });
+        }
+
+        if (msg.text) {
+          parts.push({ text: msg.text });
+        }
+
+        return { role: msg.role, parts };
+      });
+
+      runBtn.disabled = true;
+      responseEl.style.display = 'block';
+      responseEl.className = 'response loading';
+      responseEl.textContent = 'Running chain...';
+
+      try {
+        const res = await fetch('/api/gemini/chain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+
+        responseEl.className = 'response';
+        responseEl.textContent = data.response;
+
+        // Add model response and next viewport prompt to chain
+        chain.push({
+          role: 'model',
+          text: data.response,
+          editable: false
+        });
+        chain.push({
+          role: 'user',
+          text: `Good, here is the next viewport on the same page. Here you can point out inconsistencies or this can also help you confirm bugs and inconsistencies on previous viewports.`,
+          editable: true,
+          image: null
+        });
+        renderChain();
+      } catch (err) {
+        responseEl.className = 'response error';
+        responseEl.textContent = 'Error: ' + err.message;
+      } finally {
+        runBtn.disabled = false;
+      }
+    }
+
+    // Initial render
+    renderChain();
+  </script>
+</body>
+</html>
