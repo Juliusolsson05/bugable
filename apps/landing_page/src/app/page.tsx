@@ -1,9 +1,11 @@
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
-import { BetaAccess } from "@/components/BetaAccess";
+import { About } from "@/components/About";
 import { Features } from "@/components/Features";
 import { HowItWorks } from "@/components/HowItWorks";
+import { Demo } from "@/components/Demo";
 import { Testimonials } from "@/components/Testimonials";
+import { BetaAccess } from "@/components/BetaAccess";
 import { CTA } from "@/components/CTA";
 import { Footer } from "@/components/Footer";
 
@@ -13,10 +15,12 @@ export default function Home() {
       <Header />
       <main>
         <Hero />
-        <BetaAccess />
+        <About />
         <Features />
         <HowItWorks />
+        <Demo />
         <Testimonials />
+        <BetaAccess />
         <CTA />
       </main>
       <Footer />

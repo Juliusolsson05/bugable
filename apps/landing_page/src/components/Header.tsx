@@ -11,28 +11,24 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = isMobileMenuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [isMobileMenuOpen]);
 
   const navItems = [
-    { href: "#features", label: "Features" },
-    { href: "#how-it-works", label: "How it works" },
-    { href: "#beta", label: "Join Beta" },
+    { href: "/#about", label: "About" },
+    { href: "/#features", label: "Features" },
+    { href: "/#how-it-works", label: "How it works" },
+    { href: "/#demo", label: "Demo" },
+    { href: "/#beta", label: "Join Beta" },
   ];
 
   return (
@@ -71,12 +67,19 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
-              Sign in
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden sm:inline-flex"
+              asChild
+            >
+              <a href="/signin">Sign in</a>
             </Button>
-            <Button size="sm" className="hidden sm:inline-flex">
-              Get started
+
+            <Button size="sm" className="hidden sm:inline-flex" asChild>
+              <a href="/#beta">Get started</a>
             </Button>
+
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="md:hidden p-2 -mr-2"
@@ -88,7 +91,6 @@ export function Header() {
         </div>
       </header>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -133,10 +135,19 @@ export function Header() {
                 </nav>
 
                 <div className="mt-auto p-4 border-t border-border space-y-2">
-                  <Button variant="outline" className="w-full">
-                    Sign in
+                  <Button variant="outline" className="w-full" asChild>
+                    <a
+                      href="/signin"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Sign in
+                    </a>
                   </Button>
-                  <Button className="w-full">Get started</Button>
+                  <Button className="w-full" asChild>
+                    <a href="/#beta" onClick={() => setIsMobileMenuOpen(false)}>
+                      Get started
+                    </a>
+                  </Button>
                 </div>
               </div>
             </motion.div>

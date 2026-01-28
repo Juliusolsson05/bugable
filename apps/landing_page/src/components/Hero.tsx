@@ -45,13 +45,13 @@ export function Hero() {
             className="flex flex-col sm:flex-row gap-3 justify-center mb-4"
           >
             <Button size="lg" className="gap-2" asChild>
-              <a href="#beta">
+              <a href="/#beta">
                 Request beta access
                 <ArrowRight className="h-4 w-4" />
               </a>
             </Button>
-            <Button variant="outline" size="lg">
-              Watch demo
+            <Button variant="outline" size="lg" asChild>
+              <a href="/#demo">Watch demo</a>
             </Button>
           </motion.div>
 

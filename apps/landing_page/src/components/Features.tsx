@@ -1,46 +1,28 @@
 "use client";
 
-import { Shield, Eye, GitBranch, Code2, Zap, RefreshCw } from "lucide-react";
+import { Search, Shield, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef } from "react";
 
 const features = [
   {
-    icon: Eye,
-    title: "UX & UI Testing",
+    icon: Search,
+    title: "Paste URL, get results",
     description:
-      "Detects visual inconsistencies, accessibility issues, and broken layouts across devices.",
+      "Enter any URL and get a full analysis. No setup, no configuration, no code access needed.",
   },
   {
     icon: Shield,
-    title: "Security Scanning",
+    title: "5 categories of issues",
     description:
-      "Identifies vulnerabilities like XSS, exposed APIs, and misconfigured headers.",
+      "Detects security vulnerabilities, UX problems, UI bugs, performance issues, and accessibility gaps.",
   },
   {
-    icon: GitBranch,
-    title: "User Flow Mapping",
+    icon: Sparkles,
+    title: "AI-powered analysis",
     description:
-      "Automatically maps critical paths and catches broken links or dead ends.",
-  },
-  {
-    icon: Code2,
-    title: "Code Review",
-    description:
-      "Connect GitHub for automated code analysis and refactoring recommendations.",
-  },
-  {
-    icon: Zap,
-    title: "Instant Results",
-    description:
-      "Get actionable insights in under 60 seconds. No complex setup required.",
-  },
-  {
-    icon: RefreshCw,
-    title: "Continuous Monitoring",
-    description:
-      "Set it and forget it. Get alerts when new issues are detected.",
+      "Watch the AI reason through your page in real-time. See exactly what it finds and why.",
   },
 ];
 

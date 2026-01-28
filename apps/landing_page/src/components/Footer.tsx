@@ -1,11 +1,12 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export function Footer() {
   return (
     <footer className="py-12 border-t border-border">
       <div className="container">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <a href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Image
               src="/logo_bugable.png"
               alt="Bugable"
@@ -16,18 +17,33 @@ export function Footer() {
             <span className="font-display text-base font-bold tracking-tight">
               Bugable
             </span>
-          </a>
+          </Link>
 
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">
+            <Link
+              href="/privacy"
+              className="hover:text-foreground transition-colors"
+            >
               Privacy
-            </a>
-            <a href="#" className="hover:text-foreground transition-colors">
+            </Link>
+            <Link
+              href="/terms"
+              className="hover:text-foreground transition-colors"
+            >
               Terms
-            </a>
-            <a href="#" className="hover:text-foreground transition-colors">
+            </Link>
+            <Link
+              href="/cookies"
+              className="hover:text-foreground transition-colors"
+            >
+              Cookies
+            </Link>
+            <Link
+              href="/contact"
+              className="hover:text-foreground transition-colors"
+            >
               Contact
-            </a>
+            </Link>
           </nav>
 
           <p className="text-sm text-muted-foreground">
