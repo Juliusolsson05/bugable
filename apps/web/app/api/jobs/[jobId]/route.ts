@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@bugable/db';
 import {
   getAuthenticatedUser,
-  verifyJobOwnership,
   errorResponse,
   buildFullUrl,
 } from '@/lib/api-helpers';
 
-// GET /api/jobs/:jobId - Get job detail with findings and logs
+// GET /api/jobs/:jobId - Get job detail with findings and events
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ jobId: string }> }
@@ -18,18 +17,13 @@ export async function GET(
     if (authError) return authError;
 
     const { searchParams } = new URL(request.url);
-    const includeFindings = searchParams.get('includeFindings') !== 'false';
-    const includeLogs = searchParams.get('includeLogs') !== 'false';
-    const findingsLimit = Math.min(
-      parseInt(searchParams.get('findingsLimit') || '200'),
-      500
-    );
-    const logsLimit = Math.min(
-      parseInt(searchParams.get('logsLimit') || '200'),
-      500
+    const includeEvents = searchParams.get('includeEvents') !== 'false';
+    const eventsLimit = Math.min(
+      parseInt(searchParams.get('eventsLimit') || '1000'),
+      5000
     );
 
-    // Fetch job with all related data
+    // Fetch job with events
     const job = await prisma.job.findFirst({
       where: { id: jobId },
       include: {
@@ -38,22 +32,11 @@ export async function GET(
             site: true,
           },
         },
-        ...(includeFindings
+        ...(includeEvents
           ? {
-              findings: {
-                orderBy: [
-                  { severity: 'asc' }, // critical first
-                  { createdAt: 'desc' },
-                ],
-                take: findingsLimit,
-              },
-            }
-          : {}),
-        ...(includeLogs
-          ? {
-              reasoningLogs: {
+              events: {
                 orderBy: { timestamp: 'asc' },
-                take: logsLimit,
+                take: eventsLimit,
               },
             }
           : {}),
@@ -64,20 +47,59 @@ export async function GET(
       return errorResponse('NOT_FOUND', 'Job not found', 404);
     }
 
+    // Extract test result from test_completed event
+    const completedEvent = job.events?.find(e => e.type === 'test_completed');
+    const testResult = completedEvent?.result as any;
+
+    // Get all findings from bugs_detected events
+    const findings = job.events
+      ?.filter(e => e.type === 'bugs_detected')
+      .flatMap(e => {
+        const bugs = (e.findings as any[]) || [];
+        return bugs.map(bug => ({
+          ...bug,
+          turn: e.turn,
+          timestamp: e.timestamp.toISOString()
+        }));
+      }) || [];
+
+    // Get turn summaries (combined data from multiple event types)
+    const turns: any[] = [];
+    if (job.events) {
+      const turnNumbers = [...new Set(job.events.map(e => e.turn))].filter(t => t > 0);
+
+      for (const turnNum of turnNumbers) {
+        const turnEvents = job.events.filter(e => e.turn === turnNum);
+        const screenshotEvent = turnEvents.find(e => e.type === 'screenshot_taken');
+        const actionPlannedEvent = turnEvents.find(e => e.type === 'action_planned');
+        const actionExecutedEvent = turnEvents.find(e => e.type === 'action_executed');
+
+        turns.push({
+          number: turnNum,
+          screenshotUrl: screenshotEvent?.screenshotUrl,
+          action: actionPlannedEvent?.action,
+          reasoning: actionPlannedEvent?.reasoning,
+          success: actionExecutedEvent?.success,
+          error: actionExecutedEvent?.error,
+        });
+      }
+    }
+
     // Transform response
-    const response: Record<string, unknown> = {
+    const response = {
       job: {
         id: job.id,
         pageId: job.pageId,
         status: job.status,
         progress: job.progress,
         currentStep: job.currentStep,
-        screenshotUrl: job.screenshotUrl,
         startedAt: job.startedAt?.toISOString() || null,
         completedAt: job.completedAt?.toISOString() || null,
-        errorMessage: job.errorMessage,
         createdAt: job.createdAt.toISOString(),
         updatedAt: job.updatedAt.toISOString(),
+        // Add test result info from completed event
+        totalTurns: testResult?.totalTurns,
+        completionReason: testResult?.completionReason,
       },
       page: {
         id: job.page.id,
@@ -93,34 +115,10 @@ export async function GET(
         name: job.page.site.name,
         baseUrl: job.page.site.baseUrl,
       },
+      findings,
+      turns,
+      ...(includeEvents ? { events: job.events } : {}),
     };
-
-    if (includeFindings && job.findings) {
-      response.findings = job.findings.map((f) => ({
-        id: f.id,
-        jobId: f.jobId,
-        severity: f.severity,
-        category: f.category,
-        title: f.title,
-        description: f.description,
-        location: f.elementSelector,
-        recommendation: null, // Add to DB if needed
-        screenshotUrl: f.screenshotUrl,
-        createdAt: f.createdAt.toISOString(),
-      }));
-    }
-
-    if (includeLogs && job.reasoningLogs) {
-      response.logs = job.reasoningLogs.map((log) => ({
-        id: log.id,
-        jobId: log.jobId,
-        timestamp: log.timestamp.toISOString(),
-        step: log.action,
-        message: log.reasoning,
-        location: log.elementSelector,
-        screenshotUrl: log.screenshotUrl,
-      }));
-    }
 
     return NextResponse.json(response);
   } catch (error) {

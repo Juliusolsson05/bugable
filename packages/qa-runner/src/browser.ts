@@ -1,12 +1,27 @@
 import { Stagehand } from '@browserbasehq/stagehand';
 
+export interface BrowserConfig {
+  env?: 'LOCAL' | 'BROWSERBASE';
+  verbose?: 0 | 1 | 2;
+  localBrowserLaunchOptions?: {
+    executablePath?: string;
+    args?: string[];
+    headless?: boolean;
+  };
+}
+
 export class Browser {
   private stagehand: Stagehand | null = null;
 
+  constructor(private config: BrowserConfig = {}) {}
+
   async init() {
     this.stagehand = new Stagehand({
-      env: 'LOCAL', // Use local Playwright
-      verbose: 1
+      env: this.config.env || 'LOCAL',
+      verbose: this.config.verbose ?? 1,
+      ...(this.config.localBrowserLaunchOptions && {
+        localBrowserLaunchOptions: this.config.localBrowserLaunchOptions
+      })
     });
 
     await this.stagehand.init();

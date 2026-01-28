@@ -22,3 +22,5 @@ export type {
   TestCompletedEvent,
   TestErrorEvent,
 } from './types';
+
+export type { BrowserConfig } from './browser';

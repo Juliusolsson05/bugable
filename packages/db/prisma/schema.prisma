@@ -18,30 +18,16 @@ enum JobStatus {
   cancelled
 }
 
-enum CompletionReason {
-  done        // AI decided testing is complete
-  max_turns   // Hit maximum turns limit
-  error       // Job crashed/errored
-}
-
-enum FindingSeverity {
-  critical
-  high
-  medium
-  low
-}
-
-enum FindingCategory {
-  error              // Console errors, crashes, 404s
-  layout_broken      // Overlapping content, broken layouts
-  image_broken       // Broken image links
-  form_validation    // Form/input issues
-  accessibility      // Accessibility violations
-  visual_overflow    // Content extending beyond containers
-  responsive_break   // Mobile/tablet layout issues
-  typography         // Text truncation, readability
-  interactive_fail   // Buttons, links not working
-  contrast           // Low contrast issues
+enum JobEventType {
+  test_started
+  turn_started
+  screenshot_taken
+  bugs_detected
+  action_planned
+  action_executed
+  turn_completed
+  test_completed
+  test_error
 }
 
 // ============================================
@@ -97,22 +83,22 @@ model Page {
 
 /// Test job run on a page
 model Job {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pageId           String            @map("page_id") @db.Uuid
-  status           JobStatus         @default(pending)
-  progress         Int               @default(0)
-  currentStep      String?           @map("current_step")
-  totalTurns       Int?              @map("total_turns")
-  completionReason CompletionReason? @map("completion_reason")
-  errorMessage     String?           @map("error_message")
-  startedAt        DateTime?         @map("started_at")
-  completedAt      DateTime?         @map("completed_at")
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at")
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId      String    @map("page_id") @db.Uuid
+  status      JobStatus @default(pending)
 
-  page     Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  turns    Turn[]
-  findings Finding[]
+  // UI-friendly fields (calculated from events)
+  progress    Int       @default(0)
+  currentStep String?   @map("current_step")
+
+  // Timestamps
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  page   Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  events JobEvent[]
 
   @@index([pageId])
   @@index([status])
@@ -120,43 +106,48 @@ model Job {
   @@map("jobs")
 }
 
-/// A single turn in the QA testing process
-model Turn {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobId         String   @map("job_id") @db.Uuid
-  number        Int      // 1, 2, 3...
-  action        String?  // What action was taken (null for turn 1)
-  reasoning     String   // AI's reasoning for this turn
-  screenshotUrl String?  @map("screenshot_url")
-  createdAt     DateTime @default(now()) @map("created_at")
+/// Event sourcing model - captures all QA runner events
+model JobEvent {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId     String       @map("job_id") @db.Uuid
+  type      JobEventType
+  turn      Int          // Turn number when event occurred
+  timestamp DateTime     @default(now())
 
-  job      Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  findings Finding[]
+  // test_started event fields
+  url      String?
+  maxTurns Int?    @map("max_turns")
 
-  @@unique([jobId, number])
+  // screenshot_taken event fields
+  screenshotUrl  String? @map("screenshot_url")
+  screenshotSize Int?    @map("screenshot_size")
+
+  // bugs_detected event fields
+  findings      Json? // Array of Finding objects: [{description, category, severity, location, detectedAtTurn}]
+  totalFindings Int?  @map("total_findings")
+
+  // action_planned event fields
+  action    String?
+  reasoning String?
+  complete  Boolean?
+
+  // action_executed event fields
+  success Boolean?
+  error   String?
+
+  // test_completed event fields
+  result Json? // Full TestResult object: {url, success, totalTurns, findings[], actionLog[], completionReason, error?, startedAt, completedAt}
+
+  // test_error event fields
+  partialResult Json? @map("partial_result") // Partial TestResult if available
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
   @@index([jobId])
-  @@map("turns")
-}
-
-/// Bug/issue discovered during testing
-model Finding {
-  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobId       String          @map("job_id") @db.Uuid
-  turnId      String?         @map("turn_id") @db.Uuid
-  severity    FindingSeverity
-  category    FindingCategory
-  title       String
-  description String
-  location    String          // Human-readable: "Hero section CTA button"
-  createdAt   DateTime        @default(now()) @map("created_at")
-
-  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  turn Turn? @relation(fields: [turnId], references: [id], onDelete: SetNull)
-
-  @@index([jobId])
-  @@index([turnId])
-  @@index([severity])
-  @@map("findings")
+  @@index([type])
+  @@index([turn])
+  @@index([timestamp])
+  @@map("job_events")
 }
 
 // ============================================

@@ -1,13 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { prisma } from '@bugable/db';
-import { createStagehand } from '../../../lib/browser.js';
-import { createTurn, updateProgress, updateStatus } from '../../../lib/events.js';
-import { uploadScreenshot } from '../../../lib/storage.js';
+import { QARunner, type QAEvent, type Finding } from '@bugable/qa-runner';
+import { createClient } from '@supabase/supabase-js';
+import chromium from '@sparticuz/chromium';
+import { env } from '../../../lib/env.js';
 
 export const config = {
   maxDuration: 60,
   runtime: 'nodejs20.x',
 };
+
+// Initialize Supabase client for screenshot uploads
+const supabase = createClient(
+  env.supabaseUrl,
+  env.supabaseServiceRoleKey
+);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -20,10 +27,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing jobId parameter' });
   }
 
-  let stagehand = null;
-
   try {
-    // 1. Get job info
+    // 1. Load job configuration
     const job = await prisma.job.findUnique({
       where: { id: jobId },
       include: { page: { include: { site: true } } }
@@ -34,87 +39,290 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (job.status !== 'pending') {
-      return res.status(400).json({ error: 'Job already started' });
+      return res.status(400).json({ error: 'Job already started or completed' });
     }
 
     const url = `https://${job.page.site.baseUrl}${job.page.path}`;
+    const maxTurns = 50;
 
-    // 2. Start job
-    await updateStatus(jobId, 'running');
-    await updateProgress(jobId, 10, 'Initializing browser');
-
-    // 3. Create Stagehand (serverless chromium)
-    await updateProgress(jobId, 20, 'Launching browser');
-    stagehand = await createStagehand();
-
-    // 4. Navigate to page and take initial screenshot (Turn 1)
-    await updateProgress(jobId, 30, 'Loading page');
-    await stagehand.page.goto(url, { waitUntil: 'networkidle' });
-
-    const screenshot = await stagehand.page.screenshot({ fullPage: true });
-    const screenshotUrl = await uploadScreenshot(jobId, screenshot as Buffer, 'turn-1.png');
-
-    await createTurn(jobId, {
-      number: 1,
-      reasoning: `Loaded ${url} and captured initial state`,
-      screenshotUrl
+    // 2. Configure QA Runner with serverless browser
+    const qaRunner = new QARunner({
+      url,
+      maxTurns,
+      browserConfig: env.isServerless ? {
+        env: 'LOCAL',
+        verbose: 1,
+        localBrowserLaunchOptions: {
+          executablePath: await chromium.executablePath(),
+          args: chromium.args,
+          headless: true
+        }
+      } : undefined
     });
 
-    // 5. TODO: Call qa-engine here when ready
-    // -----------------------------------------
-    // let turnNumber = 1;
-    // const qaEngine = await import('@bugable/qa-runner');
-    // for await (const event of qaEngine.run(url, stagehand)) {
-    //   switch (event.type) {
-    //     case 'turn':
-    //       turnNumber = event.data.number;
-    //       const turnScreenshotUrl = await uploadScreenshot(
-    //         jobId, event.data.screenshot, `turn-${turnNumber}.png`
-    //       );
-    //       await createTurn(jobId, {
-    //         number: turnNumber,
-    //         action: event.data.action,
-    //         reasoning: event.data.reasoning,
-    //         screenshotUrl: turnScreenshotUrl
-    //       });
-    //       break;
-    //     case 'finding':
-    //       await saveFinding(jobId, event.data);
-    //       break;
-    //     case 'progress':
-    //       await updateProgress(jobId, event.data.progress, event.data.step);
-    //       break;
-    //     case 'complete':
-    //       await updateStatus(jobId, 'completed', {
-    //         completionReason: event.data.reason,
-    //         totalTurns: event.data.totalTurns
-    //       });
-    //       break;
-    //   }
-    // }
-    // -----------------------------------------
+    // 3. Track state across events
+    const state = {
+      currentScreenshotUrl: null as string | null,
+      currentTurnFindings: [] as Finding[],
+      currentAction: '',
+      currentReasoning: ''
+    };
 
-    await updateProgress(jobId, 90, 'Analysis complete');
+    // 4. Process events from QA Runner
+    for await (const event of qaRunner.run()) {
+      await handleQAEvent(jobId, event, maxTurns, state);
+    }
 
-    // 6. Complete (placeholder until qa-engine integration)
-    await updateStatus(jobId, 'completed', {
-      completionReason: 'done',
-      totalTurns: 1
-    });
-
-    return res.status(200).json({ success: true, screenshotUrl });
+    return res.status(200).json({ success: true });
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    await updateStatus(jobId, 'failed', {
-      errorMessage,
-      completionReason: 'error'
-    });
-    return res.status(500).json({ error: errorMessage });
+    console.error('Worker error:', errorMessage);
 
-  } finally {
-    if (stagehand) {
-      await stagehand.close();
-    }
+    // Update job status to failed
+    await prisma.job.update({
+      where: { id: jobId },
+      data: {
+        status: 'failed',
+        completedAt: new Date()
+      }
+    });
+
+    return res.status(500).json({ error: errorMessage });
+  }
+}
+
+async function uploadScreenshot(
+  jobId: string,
+  screenshot: Buffer,
+  filename: string
+): Promise<string> {
+  const path = `${jobId}/${filename}`;
+
+  const { error } = await supabase.storage
+    .from('screenshots')
+    .upload(path, screenshot, {
+      contentType: 'image/png',
+      upsert: true
+    });
+
+  if (error) {
+    throw new Error(`Screenshot upload failed: ${error.message}`);
+  }
+
+  const { data } = supabase.storage
+    .from('screenshots')
+    .getPublicUrl(path);
+
+  return data.publicUrl;
+}
+
+async function handleQAEvent(
+  jobId: string,
+  event: QAEvent,
+  maxTurns: number,
+  state: {
+    currentScreenshotUrl: string | null;
+    currentTurnFindings: Finding[];
+    currentAction: string;
+    currentReasoning: string;
+  }
+) {
+  switch (event.type) {
+    case 'test_started':
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'test_started',
+          turn: 0,
+          url: event.url,
+          maxTurns: event.maxTurns
+        }
+      });
+
+      // Update job status
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'running',
+          startedAt: new Date(),
+          progress: 5,
+          currentStep: 'Test started'
+        }
+      });
+
+      state.currentScreenshotUrl = null;
+      state.currentTurnFindings = [];
+      state.currentAction = '';
+      state.currentReasoning = '';
+      break;
+
+    case 'turn_started':
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'turn_started',
+          turn: event.turn
+        }
+      });
+
+      // Reset state for new turn
+      state.currentScreenshotUrl = null;
+      state.currentTurnFindings = [];
+      state.currentAction = '';
+      state.currentReasoning = '';
+
+      // Update progress
+      const progress = Math.floor((event.turn / maxTurns) * 85) + 5;
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          progress,
+          currentStep: `Turn ${event.turn} of ${maxTurns}`
+        }
+      });
+      break;
+
+    case 'screenshot_taken':
+      // Upload screenshot to Supabase
+      const screenshotUrl = await uploadScreenshot(
+        jobId,
+        event.screenshot,
+        `turn-${event.turn}.png`
+      );
+      state.currentScreenshotUrl = screenshotUrl;
+
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'screenshot_taken',
+          turn: event.turn,
+          screenshotUrl,
+          screenshotSize: event.metadata.size
+        }
+      });
+      break;
+
+    case 'bugs_detected':
+      // Accumulate findings for this turn
+      state.currentTurnFindings.push(...event.findings);
+
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'bugs_detected',
+          turn: event.turn,
+          findings: event.findings as any,  // Stored as JSON
+          totalFindings: event.totalFindings
+        }
+      });
+      break;
+
+    case 'action_planned':
+      // Store action and reasoning
+      state.currentAction = event.action;
+      state.currentReasoning = event.reasoning;
+
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'action_planned',
+          turn: event.turn,
+          action: event.action,
+          reasoning: event.reasoning,
+          complete: event.complete
+        }
+      });
+
+      if (event.complete) {
+        await prisma.job.update({
+          where: { id: jobId },
+          data: {
+            progress: 90,
+            currentStep: 'Analysis complete'
+          }
+        });
+      }
+      break;
+
+    case 'action_executed':
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'action_executed',
+          turn: event.turn,
+          action: event.action,
+          success: event.success,
+          error: event.error
+        }
+      });
+
+      // Log action execution failures
+      if (!event.success && event.error) {
+        console.warn(`Turn ${event.turn} action failed: ${event.error}`);
+      }
+      break;
+
+    case 'turn_completed':
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'turn_completed',
+          turn: event.turn
+        }
+      });
+      break;
+
+    case 'test_completed':
+      // Create event record with full result
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'test_completed',
+          turn: event.turn,
+          result: event.result as any  // Stored as JSON
+        }
+      });
+
+      // Update job status
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'completed',
+          progress: 100,
+          currentStep: 'Complete',
+          completedAt: new Date()
+        }
+      });
+      break;
+
+    case 'test_error':
+      // Create event record
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: 'test_error',
+          turn: event.turn,
+          error: event.error,
+          partialResult: event.partialResult as any  // Stored as JSON
+        }
+      });
+
+      // Update job status
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          status: 'failed',
+          completedAt: new Date()
+        }
+      });
+      break;
   }
 }

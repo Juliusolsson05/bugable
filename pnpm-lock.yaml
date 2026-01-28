@@ -182,12 +182,12 @@ importers:
 
   apps/worker:
     dependencies:
-      '@browserbasehq/stagehand':
-        specifier: latest
-        version: 3.0.8(@cfworker/json-schema@4.1.1)(@opentelemetry/api@1.9.0)(deepmerge@4.3.1)(dotenv@16.6.1)(hono@4.11.7)(zod@3.25.76)
       '@bugable/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bugable/qa-runner':
+        specifier: workspace:*
+        version: link:../../packages/qa-runner
       '@sparticuz/chromium':
         specifier: latest
         version: 143.0.4

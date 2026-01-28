@@ -1,4 +1,4 @@
-import { Browser } from "./browser";
+import { Browser, BrowserConfig } from "./browser";
 import { AIClient } from "./ai-client";
 import { TestConfig, TestResult, Finding, ActionLog, QAEvent } from "./types";
 import { sleep } from "./utils";
@@ -10,8 +10,8 @@ export class QARunner {
   private actionLog: ActionLog[] = [];
   private currentTurn = 0;
 
-  constructor(private config: TestConfig) {
-    this.browser = new Browser();
+  constructor(private config: TestConfig & { browserConfig?: BrowserConfig }) {
+    this.browser = new Browser(config.browserConfig);
     this.aiClient = new AIClient();
   }
 

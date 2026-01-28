@@ -157,8 +157,11 @@ export async function GET(request: Request) {
             site: true,
           },
         },
-        findings: {
-          select: { severity: true },
+        events: {
+          where: {
+            type: 'bugs_detected'
+          },
+          select: { findings: true },
         },
       },
       orderBy,
@@ -174,20 +177,27 @@ export async function GET(request: Request) {
     }
 
     // Transform response
-    const transformedJobs = jobs.map((job) => ({
-      id: job.id,
-      status: job.status,
-      progress: job.progress,
-      currentStep: job.currentStep,
-      createdAt: job.createdAt.toISOString(),
-      completedAt: job.completedAt?.toISOString() || null,
-      page: {
-        id: job.page.id,
-        path: job.page.path,
-        fullUrl: buildFullUrl(job.page.site.baseUrl, job.page.path),
-      },
-      counts: countFindingsBySeverity(job.findings),
-    }));
+    const transformedJobs = jobs.map((job) => {
+      // Extract all findings from bugs_detected events
+      const allFindings = job.events.flatMap(event =>
+        (event.findings as any[]) || []
+      );
+
+      return {
+        id: job.id,
+        status: job.status,
+        progress: job.progress,
+        currentStep: job.currentStep,
+        createdAt: job.createdAt.toISOString(),
+        completedAt: job.completedAt?.toISOString() || null,
+        page: {
+          id: job.page.id,
+          path: job.page.path,
+          fullUrl: buildFullUrl(job.page.site.baseUrl, job.page.path),
+        },
+        counts: countFindingsBySeverity(allFindings),
+      };
+    });
 
     return NextResponse.json({
       jobs: transformedJobs,

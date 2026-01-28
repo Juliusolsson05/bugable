@@ -46,8 +46,9 @@ export async function GET(
                 take: 1,
                 include: includeStats
                   ? {
-                      findings: {
-                        select: { severity: true },
+                      events: {
+                        where: { type: 'bugs_detected' },
+                        select: { findings: true },
                       },
                     }
                   : undefined,
@@ -75,14 +76,18 @@ export async function GET(
         currentStep: string | null;
         createdAt: Date;
         completedAt: Date | null;
-        findings?: Array<{ severity: string }>;
+        events?: Array<{ findings: any }>;
       }>;
     };
 
     const transformedPages = (pages as PageWithJobs[]).map((page) => {
       const latestJob = page.jobs?.[0];
-      const counts = latestJob?.findings
-        ? countFindingsBySeverity(latestJob.findings)
+      // Extract all findings from bugs_detected events
+      const allFindings = latestJob?.events?.flatMap(event =>
+        (event.findings as any[]) || []
+      ) || [];
+      const counts = allFindings.length > 0
+        ? countFindingsBySeverity(allFindings)
         : null;
 
       return {

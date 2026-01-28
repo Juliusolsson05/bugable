@@ -9,10 +9,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@browserbasehq/stagehand": "latest",
     "@sparticuz/chromium": "latest",
     "@supabase/supabase-js": "^2.93.2",
     "@bugable/db": "workspace:*",
+    "@bugable/qa-runner": "workspace:*",
     "@vercel/node": "^3.2.27",
     "dotenv": "^16.4.7"
   },

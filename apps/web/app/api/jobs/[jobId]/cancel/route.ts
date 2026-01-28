@@ -28,12 +28,11 @@ export async function POST(
       );
     }
 
-    // Update job status to cancelled with cancellation message
+    // Update job status to cancelled
     const job = await prisma.job.update({
       where: { id: jobId },
       data: {
         status: 'cancelled',
-        errorMessage: 'Job cancelled by user',
         completedAt: new Date(),
       },
     });
@@ -42,7 +41,6 @@ export async function POST(
       job: {
         id: job.id,
         status: job.status,
-        errorMessage: job.errorMessage,
         completedAt: job.completedAt?.toISOString(),
       },
     });
