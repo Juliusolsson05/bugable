@@ -6,9 +6,28 @@ export interface TestConfig {
   maxTurns?: number; // default: 50
 }
 
+// Bug categories for classification
+export type BugCategory =
+  | 'error'              // Console errors, crashes, 404s
+  | 'layout_broken'      // Overlapping content, broken layouts
+  | 'image_broken'       // Broken image links
+  | 'form_validation'    // Form/input issues
+  | 'accessibility'      // Contrast, click targets, screen readers
+  | 'visual_overflow'    // Content extending beyond containers
+  | 'responsive_break'   // Mobile/tablet layout issues
+  | 'typography'         // Text truncation, readability
+  | 'interactive_fail'   // Buttons, links not working
+  | 'contrast';          // Low contrast issues
+
+// Bug severity levels
+export type BugSeverity = 'critical' | 'high' | 'medium' | 'low';
+
 // Bug/Finding discovered during testing
 export interface Finding {
   description: string;
+  category: BugCategory;
+  severity: BugSeverity;
+  location: string;
   detectedAtTurn: number;
 }
 
@@ -38,7 +57,21 @@ export interface TestResult {
 export const BugCheckSchema = z.object({
   hasBugs: z.boolean(),
   bugs: z.array(z.object({
-    description: z.string().max(500) // Clear description of the bug/issue
+    description: z.string().max(500), // Clear description of the bug/issue
+    category: z.enum([
+      'error',
+      'layout_broken',
+      'image_broken',
+      'form_validation',
+      'accessibility',
+      'visual_overflow',
+      'responsive_break',
+      'typography',
+      'interactive_fail',
+      'contrast'
+    ]),
+    severity: z.enum(['critical', 'high', 'medium', 'low']),
+    location: z.string().max(200) // Where the bug appears (e.g., "navbar", "hero section")
   }))
 });
 

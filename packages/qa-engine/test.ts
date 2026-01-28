@@ -20,8 +20,9 @@ async function test() {
     console.log("\n=== Findings ===");
     result.findings.forEach((finding, i) => {
       console.log(
-        `\n${i + 1}. Turn ${finding.detectedAtTurn}: ${finding.description}`,
+        `\n${i + 1}. [${finding.severity.toUpperCase()}] ${finding.category} @ ${finding.location}`,
       );
+      console.log(`   Turn ${finding.detectedAtTurn}: ${finding.description}`);
     });
   }
 

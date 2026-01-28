@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
-import { BugCheckSchema, NextActionSchema, type BugCheck, type NextAction } from './types';
+import { BugCheckSchema, NextActionSchema, type BugCheck, type NextAction, type Finding } from './types';
 import { SYSTEM_PROMPT } from './prompts';
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
@@ -21,14 +21,21 @@ export class AIClient {
     });
   }
 
-  async detectBugs(screenshot: Buffer, url: string): Promise<BugCheck> {
+  async detectBugs(screenshot: Buffer, url: string, existingFindings: Finding[]): Promise<BugCheck> {
+    // Build summary of already-reported bugs
+    const bugSummary = existingFindings.length > 0
+      ? `\n\nBUGS ALREADY REPORTED (do not report these again):\n${existingFindings.map((f, i) =>
+          `${i + 1}. [${f.category}] ${f.location}: ${f.description}`
+        ).join('\n')}`
+      : '';
+
     // Add bug detection request to conversation history
     const userMessage: Message = {
       role: 'user',
       content: [
         {
           type: 'text',
-          text: `ANALYZE FOR BUGS:\nCurrent URL: ${url}\n\nAnalyze this screenshot for bugs.`
+          text: `ANALYZE FOR BUGS:\nCurrent URL: ${url}\nTurn: ${existingFindings.length + 1}${bugSummary}\n\nAnalyze this screenshot for NEW bugs only.`
         },
         {
           type: 'image_url',

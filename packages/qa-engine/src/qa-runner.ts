@@ -31,13 +31,16 @@ export class QARunner {
         const screenshot = await this.browser.takeScreenshot();
 
         // 2. Check for bugs
-        const bugCheck = await this.aiClient.detectBugs(screenshot, url);
+        const bugCheck = await this.aiClient.detectBugs(screenshot, url, this.findings);
 
         // 3. Store findings
         if (bugCheck.hasBugs) {
           for (const bug of bugCheck.bugs) {
             this.findings.push({
               description: bug.description,
+              category: bug.category,
+              severity: bug.severity,
+              location: bug.location,
               detectedAtTurn: this.currentTurn
             });
           }
