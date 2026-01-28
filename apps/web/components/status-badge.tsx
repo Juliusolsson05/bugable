@@ -57,13 +57,17 @@ export function SeverityBadge({ severity }: SeverityBadgeProps) {
       label: 'Critical',
       className: 'bg-destructive-muted text-destructive-muted-foreground border-destructive/20',
     },
-    warning: {
-      label: 'Warning',
+    high: {
+      label: 'High',
       className: 'bg-warning-muted text-warning-muted-foreground border-warning/20',
     },
-    info: {
-      label: 'Info',
+    medium: {
+      label: 'Medium',
       className: 'bg-info-muted text-info-muted-foreground border-info/20',
+    },
+    low: {
+      label: 'Low',
+      className: 'bg-muted text-muted-foreground border-border',
     },
   }[severity];
 
@@ -79,12 +83,13 @@ export function SeverityBadge({ severity }: SeverityBadgeProps) {
 
 interface FindingCountsProps {
   critical: number;
-  warning: number;
-  info: number;
+  high: number;
+  medium: number;
+  low: number;
 }
 
-export function FindingCounts({ critical, warning, info }: FindingCountsProps) {
-  const total = critical + warning + info;
+export function FindingCounts({ critical, high, medium, low }: FindingCountsProps) {
+  const total = critical + high + medium + low;
 
   if (total === 0) {
     return <span className="text-xs text-muted-foreground">No issues</span>;
@@ -98,16 +103,22 @@ export function FindingCounts({ critical, warning, info }: FindingCountsProps) {
           <span className="text-destructive-muted-foreground font-medium">{critical}</span>
         </span>
       )}
-      {warning > 0 && (
+      {high > 0 && (
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-warning" />
-          <span className="text-warning-muted-foreground font-medium">{warning}</span>
+          <span className="text-warning-muted-foreground font-medium">{high}</span>
         </span>
       )}
-      {info > 0 && (
+      {medium > 0 && (
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full bg-info" />
-          <span className="text-info-muted-foreground font-medium">{info}</span>
+          <span className="text-info-muted-foreground font-medium">{medium}</span>
+        </span>
+      )}
+      {low > 0 && (
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+          <span className="text-muted-foreground font-medium">{low}</span>
         </span>
       )}
     </div>

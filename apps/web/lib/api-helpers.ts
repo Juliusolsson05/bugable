@@ -128,3 +128,40 @@ export function countFindingsBySeverity(findings: { severity: string }[]) {
     { critical: 0, warning: 0, info: 0 }
   );
 }
+
+// Invoke worker to process a job
+export async function invokeWorker(jobId: string): Promise<void> {
+  const workerUrl = process.env.WORKER_URL;
+  const internalSecret = process.env.BUGABLE_INTERNAL_SECRET;
+
+  if (!workerUrl || !internalSecret) {
+    console.error('Worker configuration missing: WORKER_URL or BUGABLE_INTERNAL_SECRET');
+    throw new Error('Worker not configured');
+  }
+
+  try {
+    const response = await fetch(`${workerUrl}/api/jobs/${jobId}/run`, {
+      method: 'POST',
+      headers: {
+        'X-Bugable-Internal-Secret': internalSecret,
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000), // 5s timeout for invocation
+    });
+
+    if (!response.ok) {
+      throw new Error(`Worker returned ${response.status}`);
+    }
+  } catch (error) {
+    // Mark job as failed if invocation fails
+    await prisma.job.update({
+      where: { id: jobId },
+      data: {
+        status: 'failed',
+        errorMessage: 'Failed to start worker',
+        completedAt: new Date()
+      }
+    });
+    throw error;
+  }
+}

@@ -7,6 +7,7 @@ import {
   normalizePath,
   buildFullUrl,
   countFindingsBySeverity,
+  invokeWorker,
 } from '@/lib/api-helpers';
 
 // POST /api/jobs - Create a new job (analyze a page)
@@ -75,8 +76,10 @@ export async function POST(request: Request) {
       },
     });
 
-    // TODO: Enqueue job for worker processing
-    // For now, the internal API will be used by the worker to update progress
+    // Invoke worker asynchronously (fire-and-forget)
+    invokeWorker(job.id).catch(error => {
+      console.error(`Failed to invoke worker for job ${job.id}:`, error);
+    });
 
     return NextResponse.json(
       {
@@ -157,12 +160,6 @@ export async function GET(request: Request) {
             site: true,
           },
         },
-        events: {
-          where: {
-            type: 'bugs_detected'
-          },
-          select: { findings: true },
-        },
       },
       orderBy,
       take: limit + 1,
@@ -178,11 +175,6 @@ export async function GET(request: Request) {
 
     // Transform response
     const transformedJobs = jobs.map((job) => {
-      // Extract all findings from bugs_detected events
-      const allFindings = job.events.flatMap(event =>
-        (event.findings as any[]) || []
-      );
-
       return {
         id: job.id,
         status: job.status,
@@ -195,7 +187,12 @@ export async function GET(request: Request) {
           path: job.page.path,
           fullUrl: buildFullUrl(job.page.site.baseUrl, job.page.path),
         },
-        counts: countFindingsBySeverity(allFindings),
+        counts: {
+          critical: job.findingsCritical,
+          high: job.findingsHigh,
+          medium: job.findingsMedium,
+          low: job.findingsLow,
+        },
       };
     });
 

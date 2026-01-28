@@ -1,7 +1,7 @@
 // API Types based on the API reference
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type Severity = 'critical' | 'warning' | 'info';
+export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type Category = 'ux' | 'ui' | 'security' | 'performance' | 'accessibility' | 'seo';
 
 export interface Site {
@@ -39,9 +39,10 @@ export interface Job {
   progress: number;
   currentStep: string | null;
   screenshotUrl: string | null;
+  completionReason: string | null;
+  errorMessage: string | null;
   startedAt: string | null;
   completedAt: string | null;
-  errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,8 +72,9 @@ export interface ReasoningLog {
 
 export interface FindingCounts {
   critical: number;
-  warning: number;
-  info: number;
+  high: number;
+  medium: number;
+  low: number;
 }
 
 export interface User {

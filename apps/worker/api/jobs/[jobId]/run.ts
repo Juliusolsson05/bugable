@@ -21,6 +21,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Verify internal secret
+  const internalSecret = req.headers['x-bugable-internal-secret'] as string;
+  if (!internalSecret || internalSecret !== env.internalSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const jobId = req.query.jobId as string;
 
   if (!jobId) {
@@ -204,6 +210,12 @@ async function handleQAEvent(
           screenshotSize: event.metadata.size
         }
       });
+
+      // Update latest screenshot URL on job
+      await prisma.job.update({
+        where: { id: jobId },
+        data: { latestScreenshotUrl: screenshotUrl }
+      });
       break;
 
     case 'bugs_detected':
@@ -218,6 +230,23 @@ async function handleQAEvent(
           turn: event.turn,
           findings: event.findings as any,  // Stored as JSON
           totalFindings: event.totalFindings
+        }
+      });
+
+      // Update finding counts
+      const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+      event.findings.forEach(f => {
+        const severity = f.severity as 'critical' | 'high' | 'medium' | 'low';
+        counts[severity]++;
+      });
+
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          findingsCritical: { increment: counts.critical },
+          findingsHigh: { increment: counts.high },
+          findingsMedium: { increment: counts.medium },
+          findingsLow: { increment: counts.low },
         }
       });
       break;
@@ -298,7 +327,8 @@ async function handleQAEvent(
           status: 'completed',
           progress: 100,
           currentStep: 'Complete',
-          completedAt: new Date()
+          completedAt: new Date(),
+          completionReason: event.result.completionReason,
         }
       });
       break;
@@ -320,7 +350,9 @@ async function handleQAEvent(
         where: { id: jobId },
         data: {
           status: 'failed',
-          completedAt: new Date()
+          completedAt: new Date(),
+          completionReason: 'error',
+          errorMessage: event.error,
         }
       });
       break;

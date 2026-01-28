@@ -135,8 +135,9 @@ const categoryIcons: Record<Category, React.ReactNode> = {
 function FindingCard({ finding }: { finding: Finding }) {
   const borderColor = {
     critical: 'border-l-destructive',
-    warning: 'border-l-warning',
-    info: 'border-l-info',
+    high: 'border-l-warning',
+    medium: 'border-l-info',
+    low: 'border-l-muted-foreground/50',
   }[finding.severity];
 
   return (
@@ -184,7 +185,7 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
       acc[f.severity]++;
       return acc;
     },
-    { critical: 0, warning: 0, info: 0 } as Record<Severity, number>
+    { critical: 0, high: 0, medium: 0, low: 0 } as Record<Severity, number>
   );
 
   return (
@@ -203,16 +204,22 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
               {counts.critical} critical
             </span>
           )}
-          {counts.warning > 0 && (
+          {counts.high > 0 && (
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-warning" />
-              {counts.warning} warning
+              {counts.high} high
             </span>
           )}
-          {counts.info > 0 && (
+          {counts.medium > 0 && (
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-info" />
-              {counts.info} info
+              {counts.medium} medium
+            </span>
+          )}
+          {counts.low > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+              {counts.low} low
             </span>
           )}
         </div>

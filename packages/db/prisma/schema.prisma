@@ -87,9 +87,25 @@ model Job {
   pageId      String    @map("page_id") @db.Uuid
   status      JobStatus @default(pending)
 
-  // UI-friendly fields (calculated from events)
+  // Configuration
+  maxTurns    Int       @default(50) @map("max_turns")
+
+  // UI-friendly fields (actively managed by worker)
   progress    Int       @default(0)
   currentStep String?   @map("current_step")
+
+  // Completion metadata
+  completionReason    String?  @map("completion_reason")
+  errorMessage        String?  @map("error_message")
+
+  // Latest screenshot (denormalized for quick access)
+  latestScreenshotUrl String?  @map("latest_screenshot_url")
+
+  // Finding counts (denormalized for performance - using qa-runner's 4 levels)
+  findingsCritical    Int      @default(0) @map("findings_critical")
+  findingsHigh        Int      @default(0) @map("findings_high")
+  findingsMedium      Int      @default(0) @map("findings_medium")
+  findingsLow         Int      @default(0) @map("findings_low")
 
   // Timestamps
   startedAt   DateTime? @map("started_at")

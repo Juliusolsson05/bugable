@@ -47,7 +47,7 @@ export async function GET(
       return errorResponse('NOT_FOUND', 'Job not found', 404);
     }
 
-    // Extract test result from test_completed event
+    // Extract test result from test_completed event (for totalTurns)
     const completedEvent = job.events?.find(e => e.type === 'test_completed');
     const testResult = completedEvent?.result as any;
 
@@ -93,13 +93,15 @@ export async function GET(
         status: job.status,
         progress: job.progress,
         currentStep: job.currentStep,
+        screenshotUrl: job.latestScreenshotUrl,
+        errorMessage: job.errorMessage,
+        completionReason: job.completionReason,
         startedAt: job.startedAt?.toISOString() || null,
         completedAt: job.completedAt?.toISOString() || null,
         createdAt: job.createdAt.toISOString(),
         updatedAt: job.updatedAt.toISOString(),
         // Add test result info from completed event
         totalTurns: testResult?.totalTurns,
-        completionReason: testResult?.completionReason,
       },
       page: {
         id: job.page.id,
