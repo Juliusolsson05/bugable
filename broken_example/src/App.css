@@ -1,0 +1,625 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: #333;
+}
+
+.app {
+  overflow-x: hidden;
+}
+
+/* ==========================================
+   NAVBAR - Issues: z-index, tiny click target
+   ========================================== */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 1rem 2rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  /* ISSUE: z-index too low, hero overlaps on scroll */
+  z-index: 10;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2563eb;
+}
+
+.logo span {
+  color: #1e40af;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #64748b;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: #2563eb;
+}
+
+/* ISSUE: Tiny click target */
+.tiny-link {
+  font-size: 0.65rem !important;
+  padding: 2px !important;
+}
+
+/* ISSUE: No hover state on button */
+.nav-cta {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* ==========================================
+   HERO - Issues: poor contrast, overlap on tablet
+   ========================================== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 6rem 2rem 2rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  /* ISSUE: Higher z-index than nav causes overlap */
+  position: relative;
+  z-index: 20;
+}
+
+.hero-content {
+  flex: 1;
+  max-width: 600px;
+  padding-left: 2rem;
+}
+
+.hero h1 {
+  font-size: 3rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+/* ISSUE: Very poor contrast - light text on light background */
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: #cbd5e1;
+  margin-bottom: 2rem;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+/* ISSUE: Ghost button text nearly invisible */
+.btn-ghost {
+  background: transparent;
+  color: #e2e8f0;
+  border: 2px solid #e2e8f0;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.hero-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.placeholder-img {
+  width: 500px;
+  height: 350px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  /* ISSUE: Negative margin causes overlap on tablet */
+  margin-left: -100px;
+}
+
+/* ==========================================
+   FEATURES - Issues: inconsistent cards, misaligned icon
+   ========================================== */
+.features {
+  padding: 5rem 2rem;
+  background: white;
+}
+
+.features h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+}
+
+.features-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+.feature-card {
+  background: #f8fafc;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+/* ISSUE: Inconsistent padding breaks visual alignment */
+.card-broken-padding {
+  padding: 1rem 3rem 3rem 1rem;
+}
+
+/* ISSUE: Icon pushed to the side */
+.icon-misaligned .feature-icon {
+  text-align: left;
+  margin-left: -10px;
+}
+
+/* ==========================================
+   PRICING - Issues: overflow, badge cut off, misaligned price
+   ========================================== */
+.pricing {
+  padding: 5rem 2rem;
+  background: #f1f5f9;
+}
+
+.pricing h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.pricing-subtitle {
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 3rem;
+}
+
+.pricing-grid {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  /* ISSUE: No overflow handling causes horizontal scroll on mobile */
+}
+
+.pricing-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.pricing-card h3 {
+  font-size: 1.25rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.price {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #2563eb;
+  margin-bottom: 1.5rem;
+}
+
+.price span {
+  font-size: 1rem;
+  color: #64748b;
+  font-weight: normal;
+}
+
+/* ISSUE: Price misaligned */
+.price-misaligned {
+  margin-left: 20px;
+  text-align: left;
+}
+
+.features-list {
+  list-style: none;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.features-list li {
+  padding: 0.5rem 0;
+  color: #64748b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* ISSUE: Text truncated without ellipsis indicator */
+.truncated-text {
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 180px;
+}
+
+.pricing-card.popular {
+  border: 2px solid #2563eb;
+  transform: scale(1.05);
+}
+
+/* ISSUE: Badge gets cut off by overflow:hidden on parent */
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2563eb;
+  color: white;
+  padding: 0.25rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  /* Badge partially hidden */
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.3s;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+.pricing-card .btn-primary {
+  width: 100%;
+}
+
+/* ==========================================
+   TESTIMONIALS - Issues: avatar size, flex broken, low contrast
+   ========================================== */
+.testimonials {
+  padding: 5rem 2rem;
+  background: white;
+}
+
+.testimonials h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+}
+
+.testimonials-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.testimonial-card {
+  background: #f8fafc;
+  padding: 2rem;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+  object-fit: cover;
+}
+
+/* ISSUE: Avatar size inconsistent */
+.avatar-large {
+  width: 120px;
+  height: 120px;
+}
+
+.testimonial-card p {
+  color: #64748b;
+  font-style: italic;
+  margin-bottom: 1rem;
+  flex-grow: 1;
+}
+
+.testimonial-author strong {
+  display: block;
+  color: #1e293b;
+}
+
+/* ISSUE: Very low contrast text */
+.author-title {
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+/* ISSUE: Flexbox alignment broken */
+.card-flex-broken {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* ==========================================
+   CONTACT - Issues: form labels, input types, overlap, button misaligned
+   ========================================== */
+.contact {
+  padding: 5rem 2rem;
+  background: #f1f5f9;
+}
+
+.contact h2 {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #1e293b;
+  margin-bottom: 3rem;
+}
+
+.contact-form {
+  max-width: 500px;
+  margin: 0 auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+/* ISSUE: Labels not visually connected to inputs */
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+/* ISSUE: Textarea overflows container */
+.form-group textarea {
+  min-height: 150px;
+  resize: vertical;
+  width: 120%;
+}
+
+/* ISSUE: Submit button misaligned to the right */
+.btn-submit-broken {
+  float: right;
+  margin-right: -20px;
+}
+
+/* ==========================================
+   FOOTER - Issues: spacing, newsletter alignment, low contrast
+   ========================================== */
+.footer {
+  background: #1e293b;
+  color: white;
+  padding: 4rem 2rem 1rem;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+
+.footer-section h4 {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.footer-section p {
+  color: #94a3b8;
+}
+
+.footer-section a {
+  display: block;
+  color: #94a3b8;
+  text-decoration: none;
+  margin-bottom: 0.5rem;
+  transition: color 0.3s;
+}
+
+.footer-section a:hover {
+  color: white;
+}
+
+/* ISSUE: Inconsistent link spacing */
+.links-broken-spacing a:nth-child(2) {
+  margin-bottom: 2rem;
+}
+
+.links-broken-spacing a:nth-child(3) {
+  margin-bottom: 0;
+}
+
+/* ISSUE: Newsletter input and button don't align */
+.newsletter-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.newsletter-form input {
+  padding: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  flex: 1;
+  /* ISSUE: Input too wide */
+  min-width: 200px;
+}
+
+.newsletter-form button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  /* ISSUE: Button wraps to next line */
+  white-space: nowrap;
+}
+
+.footer-bottom {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #334155;
+}
+
+/* ISSUE: Copyright text barely visible */
+.footer-bottom p {
+  color: #334155;
+  font-size: 0.85rem;
+}
+
+/* ==========================================
+   RESPONSIVE - Issues: broken on tablet/mobile
+   ========================================== */
+@media (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-content {
+    padding-left: 0;
+  }
+
+  /* ISSUE: Image still has negative margin on tablet */
+  .placeholder-img {
+    margin-left: -100px;
+    margin-top: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ISSUE: Pricing cards don't stack properly */
+  .pricing-grid {
+    grid-template-columns: repeat(3, 1fr);
+    /* Should be 1fr but isn't, causing overflow */
+  }
+
+  .footer-content {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ISSUE: Newsletter completely breaks on mobile */
+  .footer-newsletter {
+    grid-column: span 2;
+  }
+
+  .newsletter-form {
+    flex-direction: column;
+  }
+
+  .newsletter-form input {
+    min-width: 100%;
+  }
+}
