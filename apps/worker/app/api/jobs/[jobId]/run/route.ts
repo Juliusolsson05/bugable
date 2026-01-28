@@ -55,7 +55,7 @@ export async function POST(
     // 5. TODO: Call qa-engine here when ready
     // -----------------------------------------
     // let turnNumber = 1;
-    // const qaEngine = await import('@bugable/qa-engine');
+    // const qaEngine = await import('@bugable/qa-runner');
     // for await (const event of qaEngine.run(url, stagehand)) {
     //   switch (event.type) {
     //     case 'turn':

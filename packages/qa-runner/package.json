@@ -1,5 +1,5 @@
 {
-  "name": "@bugable/qa-engine",
+  "name": "@bugable/qa-runner",
   "version": "0.1.0",
   "private": true,
   "main": "./dist/index.js",

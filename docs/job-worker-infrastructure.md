@@ -2,7 +2,7 @@
 
 ## Goal
 
-Set up the core infrastructure for serverless job execution on Vercel, so the qa-engine can be plugged in later. This includes:
+Set up the core infrastructure for serverless job execution on Vercel, so the qa-runner can be plugged in later. This includes:
 - Supabase Storage bucket for screenshots
 - Browser automation setup (Chromium + Playwright)
 - Worker route with proper lifecycle management
@@ -267,9 +267,9 @@ export async function POST(
 
     // 5. Placeholder for AI analysis (to be implemented later)
     await updateProgress(jobId, 60, "Ready for analysis");
-    await logStep(jobId, "analysis", "AI analysis placeholder - plug in qa-engine here");
+    await logStep(jobId, "analysis", "AI analysis placeholder - plug in qa-runner here");
 
-    // TODO: Integrate qa-engine here
+    // TODO: Integrate qa-runner here
     // const findings = await qaEngine.analyze(screenshot, fullUrl);
     // await saveFindings(jobId, findings);
 
@@ -383,6 +383,6 @@ POST /api/jobs { siteId, path }
 
 ## Next Steps (After This Implementation)
 
-1. **Plug in qa-engine**: Import the analysis function from `@bugable/qa-engine` in the worker
+1. **Plug in qa-runner**: Import the analysis function from `@bugable/qa-runner` in the worker
 2. **Add findings**: Use the internal events API to save findings discovered by AI
 3. **Frontend polling**: The dashboard already polls - verify it works with real data
