@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import type { JobStatus, Severity } from '@/lib/mock-data';
+import type { JobStatus, Severity } from '@/lib/api';
 
 interface StatusBadgeProps {
   status: JobStatus;
@@ -27,6 +27,11 @@ export function StatusBadge({ status, size = 'default' }: StatusBadgeProps) {
       label: 'Failed',
       className: 'bg-destructive-muted text-destructive-muted-foreground',
       dotClassName: 'bg-destructive',
+    },
+    cancelled: {
+      label: 'Cancelled',
+      className: 'bg-muted text-muted-foreground',
+      dotClassName: 'bg-muted-foreground',
     },
   }[status];
 

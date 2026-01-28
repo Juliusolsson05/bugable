@@ -7,7 +7,7 @@ datasource db {
 }
 
 // ============================================
-// ENUMS
+// ENUMS - Aligned with QA Engine
 // ============================================
 
 enum JobStatus {
@@ -15,21 +15,33 @@ enum JobStatus {
   running
   completed
   failed
+  cancelled
+}
+
+enum CompletionReason {
+  done        // AI decided testing is complete
+  max_turns   // Hit maximum turns limit
+  error       // Job crashed/errored
 }
 
 enum FindingSeverity {
   critical
-  warning
-  info
+  high
+  medium
+  low
 }
 
 enum FindingCategory {
-  ux
-  ui
-  security
-  performance
-  accessibility
-  seo
+  error              // Console errors, crashes, 404s
+  layout_broken      // Overlapping content, broken layouts
+  image_broken       // Broken image links
+  form_validation    // Form/input issues
+  accessibility      // Accessibility violations
+  visual_overflow    // Content extending beyond containers
+  responsive_break   // Mobile/tablet layout issues
+  typography         // Text truncation, readability
+  interactive_fail   // Buttons, links not working
+  contrast           // Low contrast issues
 }
 
 // ============================================
@@ -85,21 +97,22 @@ model Page {
 
 /// Test job run on a page
 model Job {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pageId        String    @map("page_id") @db.Uuid
-  status        JobStatus @default(pending)
-  progress      Int       @default(0)
-  currentStep   String?   @map("current_step")
-  screenshotUrl String?   @map("screenshot_url")
-  startedAt     DateTime? @map("started_at")
-  completedAt   DateTime? @map("completed_at")
-  errorMessage  String?   @map("error_message")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId           String            @map("page_id") @db.Uuid
+  status           JobStatus         @default(pending)
+  progress         Int               @default(0)
+  currentStep      String?           @map("current_step")
+  totalTurns       Int?              @map("total_turns")
+  completionReason CompletionReason? @map("completion_reason")
+  errorMessage     String?           @map("error_message")
+  startedAt        DateTime?         @map("started_at")
+  completedAt      DateTime?         @map("completed_at")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @default(now()) @updatedAt @map("updated_at")
 
-  page          Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  findings      Finding[]
-  reasoningLogs ReasoningLog[]
+  page     Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  turns    Turn[]
+  findings Finding[]
 
   @@index([pageId])
   @@index([status])
@@ -107,47 +120,47 @@ model Job {
   @@map("jobs")
 }
 
-/// Issue discovered during testing
-model Finding {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobId           String          @map("job_id") @db.Uuid
-  severity        FindingSeverity
-  category        FindingCategory
-  title           String
-  description     String
-  elementSelector String?         @map("element_selector")
-  screenshotUrl   String?         @map("screenshot_url")
-  createdAt       DateTime        @default(now()) @map("created_at")
+/// A single turn in the QA testing process
+model Turn {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId         String   @map("job_id") @db.Uuid
+  number        Int      // 1, 2, 3...
+  action        String?  // What action was taken (null for turn 1)
+  reasoning     String   // AI's reasoning for this turn
+  screenshotUrl String?  @map("screenshot_url")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job      Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  findings Finding[]
+
+  @@unique([jobId, number])
+  @@index([jobId])
+  @@map("turns")
+}
+
+/// Bug/issue discovered during testing
+model Finding {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId       String          @map("job_id") @db.Uuid
+  turnId      String?         @map("turn_id") @db.Uuid
+  severity    FindingSeverity
+  category    FindingCategory
+  title       String
+  description String
+  location    String          // Human-readable: "Hero section CTA button"
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  job  Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  turn Turn? @relation(fields: [turnId], references: [id], onDelete: SetNull)
 
   @@index([jobId])
+  @@index([turnId])
   @@index([severity])
   @@map("findings")
 }
 
-/// AI reasoning/action log during testing
-model ReasoningLog {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobId           String   @map("job_id") @db.Uuid
-  timestamp       DateTime @default(now())
-  action          String
-  reasoning       String
-  elementSelector String?  @map("element_selector")
-  screenshotUrl   String?  @map("screenshot_url")
-
-  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@index([jobId])
-  @@index([timestamp])
-  @@map("reasoning_logs")
-}
-
 // ============================================
 // MARKETING / LANDING PAGE (isolated)
-// These tables are for the landing page only.
-// Not tightly integrated with the main app.
-// RLS: INSERT public, SELECT authenticated only
 // ============================================
 
 /// Beta waitlist signups from landing page

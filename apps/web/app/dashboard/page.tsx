@@ -1,53 +1,74 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, ChevronRight, ExternalLink } from 'lucide-react';
+import { Plus, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, FindingCounts } from '@/components/status-badge';
 import { cn } from '@/lib/utils';
+import { useSite } from '@/components/site-provider';
 import {
-  mockSite,
-  getLatestJobForPage,
+  getPages,
+  createJob,
   formatRelativeTime,
   type Page,
-  type Job,
-} from '@/lib/mock-data';
+  type JobStatus,
+  type FindingCounts as FindingCountsType,
+} from '@/lib/api';
 
-function NewAnalysisInput() {
+function NewAnalysisInput({ siteId, domain, onJobCreated }: { siteId: string; domain: string; onJobCreated: () => void }) {
   const [path, setPath] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!path.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const normalizedPath = `/${path.trim().replace(/^\/+/, '')}`;
+      await createJob(siteId, normalizedPath);
+      setPath('');
+      onJobCreated();
+    } catch (err) {
+      console.error('Failed to create job:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex items-center gap-2">
       <div className="relative flex items-center">
         <span className="absolute left-3 text-sm text-muted-foreground select-none">
-          {mockSite.domain}
+          {domain}/
         </span>
         <input
           type="text"
           value={path}
           onChange={(e) => setPath(e.target.value)}
-          placeholder="/page-path"
-          className="w-72 pl-[145px] pr-3 h-9 text-sm bg-background border rounded-md placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+          placeholder="page-path"
+          className="w-72 pl-[152px] pr-3 h-9 text-sm bg-background border rounded-md placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
         />
       </div>
-      <Button size="default">
+      <Button size="default" onClick={handleSubmit} disabled={isSubmitting || !path.trim()}>
         <Plus className="h-4 w-4" />
-        Analyze
+        {isSubmitting ? 'Starting...' : 'Analyze'}
       </Button>
     </div>
   );
 }
 
-function JobRow({ job, isLast }: { job: Job; isLast: boolean }) {
-  const findingCounts = job.findings.reduce(
-    (acc, f) => {
-      acc[f.severity]++;
-      return acc;
-    },
-    { critical: 0, warning: 0, info: 0 }
-  );
+interface PageJob {
+  id: string;
+  status: JobStatus;
+  progress: number;
+  currentStep: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  counts?: FindingCountsType;
+}
 
+function JobRow({ job, isLast }: { job: PageJob; isLast: boolean }) {
   return (
     <Link
       href={`/dashboard/jobs/${job.id}`}
@@ -64,9 +85,14 @@ function JobRow({ job, isLast }: { job: Job; isLast: boolean }) {
             {job.currentStep} <span className="text-primary font-medium">{job.progress}%</span>
           </span>
         )}
-        {job.status === 'completed' && <FindingCounts {...findingCounts} />}
+        {job.status === 'completed' && job.counts && (
+          <FindingCounts critical={job.counts.critical} warning={job.counts.warning} info={job.counts.info} />
+        )}
         {job.status === 'failed' && (
           <span className="text-destructive">Analysis failed</span>
+        )}
+        {job.status === 'cancelled' && (
+          <span className="text-muted-foreground">Analysis cancelled</span>
         )}
         {job.status === 'pending' && (
           <span className="text-muted-foreground">Waiting in queue...</span>
@@ -82,27 +108,50 @@ function JobRow({ job, isLast }: { job: Job; isLast: boolean }) {
   );
 }
 
-function PageCard({ page }: { page: Page }) {
-  const [expanded, setExpanded] = useState(
-    page.jobs.some((j) => j.status === 'running') || page.jobs.length <= 2
-  );
-  const latestJob = getLatestJobForPage(page);
+interface PageWithJobs extends Page {
+  latestJob?: PageJob;
+}
 
-  const latestFindingCounts = latestJob
-    ? latestJob.findings.reduce(
-        (acc, f) => {
-          acc[f.severity]++;
-          return acc;
-        },
-        { critical: 0, warning: 0, info: 0 }
-      )
-    : { critical: 0, warning: 0, info: 0 };
+function PageCard({ page, siteId, onRefresh }: { page: PageWithJobs; siteId: string; onRefresh: () => void }) {
+  const [expanded, setExpanded] = useState(page.latestJob?.status === 'running');
+  const [jobs, setJobs] = useState<PageJob[]>(page.latestJob ? [page.latestJob] : []);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+
+  const loadAllJobs = async () => {
+    if (jobs.length > 1) return; // Already loaded
+    setLoadingJobs(true);
+    try {
+      const { getJobs } = await import('@/lib/api');
+      const data = await getJobs({ siteId, pageId: page.id, limit: 10 });
+      setJobs(data.jobs.map(j => ({
+        id: j.id,
+        status: j.status,
+        progress: j.progress,
+        currentStep: j.currentStep,
+        createdAt: j.createdAt,
+        completedAt: j.completedAt,
+        counts: j.counts,
+      })));
+    } catch (err) {
+      console.error('Failed to load jobs:', err);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  const handleExpand = () => {
+    const newExpanded = !expanded;
+    setExpanded(newExpanded);
+    if (newExpanded) {
+      loadAllJobs();
+    }
+  };
 
   return (
     <div className="bg-card overflow-hidden">
       <div
         className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-accent/30 transition-colors"
-        onClick={() => setExpanded(!expanded)}
+        onClick={handleExpand}
       >
         <ChevronRight className={cn(
           "h-4 w-4 text-muted-foreground transition-transform",
@@ -113,32 +162,39 @@ function PageCard({ page }: { page: Page }) {
           {page.path}
         </code>
 
-        {latestJob && <StatusBadge status={latestJob.status} size="sm" />}
+        {page.latestJob && <StatusBadge status={page.latestJob.status} size="sm" />}
 
         <div className="flex-1" />
 
-        {latestJob && latestJob.status === 'completed' && (
-          <FindingCounts {...latestFindingCounts} />
+        {page.latestJob && page.latestJob.status === 'completed' && page.latestJob.counts && (
+          <FindingCounts {...page.latestJob.counts} />
         )}
-
-        <span className="text-xs text-muted-foreground">
-          {page.jobs.length} {page.jobs.length === 1 ? 'run' : 'runs'}
-        </span>
       </div>
 
       {expanded && (
         <div className="border-t bg-background">
-          {page.jobs.length === 0 ? (
+          {loadingJobs ? (
+            <div className="px-6 py-8 text-center">
+              <RefreshCw className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : jobs.length === 0 ? (
             <div className="px-6 py-8 text-center">
               <p className="text-sm text-muted-foreground mb-2">No analyses yet</p>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  await createJob(siteId, page.path);
+                  onRefresh();
+                }}
+              >
                 <Plus className="h-3 w-3" />
                 Run first analysis
               </Button>
             </div>
           ) : (
-            page.jobs.map((job, i) => (
-              <JobRow key={job.id} job={job} isLast={i === page.jobs.length - 1} />
+            jobs.map((job, i) => (
+              <JobRow key={job.id} job={job} isLast={i === jobs.length - 1} />
             ))
           )}
         </div>
@@ -157,25 +213,51 @@ function StatsCard({ label, value, valueColor }: { label: string; value: number 
 }
 
 export default function DashboardPage() {
-  const totalPages = mockSite.pages.length;
-  const totalJobs = mockSite.pages.reduce((acc, p) => acc + p.jobs.length, 0);
-  const runningJobs = mockSite.pages.reduce(
-    (acc, p) => acc + p.jobs.filter((j) => j.status === 'running').length,
-    0
-  );
+  const { activeSite, isLoading: siteLoading } = useSite();
+  const [pages, setPages] = useState<PageWithJobs[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchPages = useCallback(async () => {
+    if (!activeSite) return;
+    setIsLoading(true);
+    try {
+      const data = await getPages(activeSite.id, { includeLatestJob: true, includeStats: true });
+      setPages(data.pages as PageWithJobs[]);
+    } catch (err) {
+      console.error('Failed to fetch pages:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeSite]);
+
+  useEffect(() => {
+    fetchPages();
+  }, [fetchPages]);
+
+  // Compute stats
+  const totalPages = pages.length;
+  const runningJobs = pages.filter(p => p.latestJob?.status === 'running').length;
 
   let totalCritical = 0;
   let totalWarning = 0;
 
-  mockSite.pages.forEach((page) => {
-    const latest = getLatestJobForPage(page);
-    if (latest && latest.status === 'completed') {
-      latest.findings.forEach((f) => {
-        if (f.severity === 'critical') totalCritical++;
-        else if (f.severity === 'warning') totalWarning++;
-      });
+  pages.forEach((page) => {
+    if (page.latestJob?.status === 'completed' && page.latestJob.counts) {
+      totalCritical += page.latestJob.counts.critical;
+      totalWarning += page.latestJob.counts.warning;
     }
   });
+
+  if (siteLoading || !activeSite) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Extract domain from baseUrl
+  const domain = activeSite.baseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   return (
     <div className="min-h-screen">
@@ -185,11 +267,11 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-base font-semibold">Pages</h1>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>{mockSite.domain}</span>
+              <span>{domain}</span>
               <ExternalLink className="h-3 w-3" />
             </div>
           </div>
-          <NewAnalysisInput />
+          <NewAnalysisInput siteId={activeSite.id} domain={domain} onJobCreated={fetchPages} />
         </div>
       </header>
 
@@ -197,7 +279,6 @@ export default function DashboardPage() {
       <div className="border-b bg-card">
         <div className="flex divide-x">
           <StatsCard label="Pages" value={totalPages} />
-          <StatsCard label="Total Runs" value={totalJobs} />
           <StatsCard label="Running" value={runningJobs} valueColor={runningJobs > 0 ? "text-primary" : undefined} />
           <StatsCard
             label="Open Issues"
@@ -208,11 +289,22 @@ export default function DashboardPage() {
       </div>
 
       {/* Pages list */}
-      <div className="divide-y">
-        {mockSite.pages.map((page) => (
-          <PageCard key={page.id} page={page} />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="py-12 text-center">
+          <RefreshCw className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+        </div>
+      ) : pages.length === 0 ? (
+        <div className="py-12 text-center">
+          <p className="text-muted-foreground mb-4">No pages analyzed yet</p>
+          <p className="text-sm text-muted-foreground">Enter a path above to start your first analysis</p>
+        </div>
+      ) : (
+        <div className="divide-y">
+          {pages.map((page) => (
+            <PageCard key={page.id} page={page} siteId={activeSite.id} onRefresh={fetchPages} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

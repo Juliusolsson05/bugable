@@ -1,4 +1,4 @@
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type Severity = 'critical' | 'warning' | 'info';
 export type Category = 'security' | 'ux' | 'ui' | 'performance' | 'accessibility';
 

@@ -1,18 +1,25 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Zap, Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Zap, Eye, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, SeverityBadge } from '@/components/status-badge';
 import { cn } from '@/lib/utils';
 import {
-  getJobById,
-  getPageByJobId,
+  getJob,
+  rerunJob,
+  cancelJob,
   formatRelativeTime,
   type Finding,
   type ReasoningLog,
-} from '@/lib/mock-data';
+  type Job,
+  type Page,
+  type JobStatus,
+  type Severity,
+  type Category,
+} from '@/lib/api';
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
@@ -25,7 +32,7 @@ function ProgressBar({ progress }: { progress: number }) {
   );
 }
 
-function LiveViewPanel({ status }: { status: string }) {
+function LiveViewPanel({ status, screenshotUrl }: { status: JobStatus; screenshotUrl?: string | null }) {
   return (
     <div className="flex flex-col h-full border-r">
       <div className="px-4 py-3 border-b bg-muted/30">
@@ -33,8 +40,10 @@ function LiveViewPanel({ status }: { status: string }) {
         <p className="text-xs text-muted-foreground">What the AI sees</p>
       </div>
       <div className="flex-1 flex items-center justify-center p-4 bg-muted/20">
-        <div className="w-full max-w-sm aspect-[16/10] bg-card border flex items-center justify-center">
-          {status === 'running' ? (
+        <div className="w-full max-w-sm aspect-[16/10] bg-card border flex items-center justify-center overflow-hidden">
+          {screenshotUrl ? (
+            <img src={screenshotUrl} alt="Screenshot" className="w-full h-full object-cover" />
+          ) : status === 'running' ? (
             <div className="text-center">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
               <p className="text-xs text-muted-foreground">Capturing...</p>
@@ -42,7 +51,7 @@ function LiveViewPanel({ status }: { status: string }) {
           ) : status === 'completed' ? (
             <div className="text-center text-muted-foreground">
               <Eye className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-xs">Final screenshot</p>
+              <p className="text-xs">No screenshot</p>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">No preview</p>
@@ -56,7 +65,7 @@ function LiveViewPanel({ status }: { status: string }) {
   );
 }
 
-function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: string }) {
+function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: JobStatus }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b bg-muted/30">
@@ -73,7 +82,7 @@ function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: string
             {logs.map((log) => (
               <div key={log.id} className="flex gap-3">
                 <span className="text-muted-foreground tabular-nums shrink-0">
-                  {log.timestamp.toLocaleTimeString('en-US', {
+                  {new Date(log.timestamp).toLocaleTimeString('en-US', {
                     hour12: false,
                     hour: '2-digit',
                     minute: '2-digit',
@@ -114,12 +123,13 @@ function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: string
   );
 }
 
-const categoryIcons: Record<string, React.ReactNode> = {
+const categoryIcons: Record<Category, React.ReactNode> = {
   security: <Shield className="h-4 w-4" />,
   ux: <MousePointer className="h-4 w-4" />,
   ui: <Palette className="h-4 w-4" />,
   performance: <Zap className="h-4 w-4" />,
   accessibility: <Eye className="h-4 w-4" />,
+  seo: <Eye className="h-4 w-4" />,
 };
 
 function FindingCard({ finding }: { finding: Finding }) {
@@ -145,32 +155,36 @@ function FindingCard({ finding }: { finding: Finding }) {
             </div>
             <h4 className="text-sm font-medium mb-1">{finding.title}</h4>
             <p className="text-sm text-muted-foreground mb-3">{finding.description}</p>
-            <div className="text-xs text-muted-foreground">
-              <span className="font-medium">Location:</span>{' '}
-              <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[11px]">
-                {finding.location}
-              </code>
-            </div>
+            {finding.location && (
+              <div className="text-xs text-muted-foreground">
+                <span className="font-medium">Location:</span>{' '}
+                <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[11px]">
+                  {finding.location}
+                </code>
+              </div>
+            )}
           </div>
         </div>
-        <div className="mt-4 pt-3 border-t">
-          <p className="text-xs">
-            <span className="font-medium text-foreground">Recommendation:</span>{' '}
-            <span className="text-muted-foreground">{finding.recommendation}</span>
-          </p>
-        </div>
+        {finding.recommendation && (
+          <div className="mt-4 pt-3 border-t">
+            <p className="text-xs">
+              <span className="font-medium text-foreground">Recommendation:</span>{' '}
+              <span className="text-muted-foreground">{finding.recommendation}</span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function FindingsSection({ findings, status }: { findings: Finding[]; status: string }) {
+function FindingsSection({ findings, status }: { findings: Finding[]; status: JobStatus }) {
   const counts = findings.reduce(
     (acc, f) => {
       acc[f.severity]++;
       return acc;
     },
-    { critical: 0, warning: 0, info: 0 }
+    { critical: 0, warning: 0, info: 0 } as Record<Severity, number>
   );
 
   return (
@@ -222,6 +236,11 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: st
                 <p className="text-sm font-medium text-success-muted-foreground">No issues found</p>
                 <p className="text-xs text-muted-foreground mt-1">This page passed all checks</p>
               </>
+            ) : status === 'cancelled' ? (
+              <>
+                <p className="text-sm text-muted-foreground">This analysis was cancelled</p>
+                <p className="text-xs text-muted-foreground mt-1">You can re-run it at any time</p>
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">No findings</p>
             )}
@@ -240,8 +259,73 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: st
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const job = getJobById(id);
-  const page = getPageByJobId(id);
+  const router = useRouter();
+  const [job, setJob] = useState<Job | null>(null);
+  const [page, setPage] = useState<Page | null>(null);
+  const [site, setSite] = useState<{ id: string; name: string; baseUrl: string } | null>(null);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [logs, setLogs] = useState<ReasoningLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isActioning, setIsActioning] = useState(false);
+
+  const fetchJob = useCallback(async () => {
+    try {
+      const data = await getJob(id, { includeFindings: true, includeLogs: true });
+      setJob(data.job);
+      setPage(data.page);
+      setSite(data.site);
+      setFindings(data.findings || []);
+      setLogs(data.logs || []);
+    } catch (err) {
+      console.error('Failed to fetch job:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchJob();
+  }, [fetchJob]);
+
+  // Poll for updates if job is running
+  useEffect(() => {
+    if (job?.status === 'running' || job?.status === 'pending') {
+      const interval = setInterval(fetchJob, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [job?.status, fetchJob]);
+
+  const handleRerun = async () => {
+    setIsActioning(true);
+    try {
+      const data = await rerunJob(id);
+      router.push(`/dashboard/jobs/${data.job.id}`);
+    } catch (err) {
+      console.error('Failed to rerun job:', err);
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setIsActioning(true);
+    try {
+      await cancelJob(id);
+      fetchJob();
+    } catch (err) {
+      console.error('Failed to cancel job:', err);
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!job || !page) {
     return (
@@ -287,13 +371,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
             <div className="flex items-center gap-2">
               {job.status === 'running' && (
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleCancel} disabled={isActioning}>
                   <Square className="h-3 w-3" />
                   Cancel
                 </Button>
               )}
-              {(job.status === 'completed' || job.status === 'failed') && (
-                <Button size="sm">
+              {(job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') && (
+                <Button size="sm" onClick={handleRerun} disabled={isActioning}>
                   <RotateCcw className="h-3 w-3" />
                   Re-run
                 </Button>
@@ -316,15 +400,15 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {/* Content */}
       <div className="flex-1 flex flex-col">
         {/* Live view + reasoning (only for running jobs or jobs with logs) */}
-        {(job.status === 'running' || job.reasoningLogs.length > 0) && (
+        {(job.status === 'running' || logs.length > 0) && (
           <div className="grid grid-cols-2 h-72 border-b">
-            <LiveViewPanel status={job.status} />
-            <ReasoningPanel logs={job.reasoningLogs} status={job.status} />
+            <LiveViewPanel status={job.status} screenshotUrl={job.screenshotUrl} />
+            <ReasoningPanel logs={logs} status={job.status} />
           </div>
         )}
 
         {/* Findings */}
-        <FindingsSection findings={job.findings} status={job.status} />
+        <FindingsSection findings={findings} status={job.status} />
       </div>
     </div>
   );

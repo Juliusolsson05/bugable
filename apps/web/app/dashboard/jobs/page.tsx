@@ -1,35 +1,28 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import { StatusBadge, FindingCounts } from '@/components/status-badge';
-import { cn } from '@/lib/utils';
-import {
-  mockSite,
-  formatRelativeTime,
-  type Job,
-  type Page,
-} from '@/lib/mock-data';
+import { useSite } from '@/components/site-provider';
+import { getJobs, formatRelativeTime, type JobStatus, type FindingCounts as FindingCountsType } from '@/lib/api';
 
-function getAllJobs(): { job: Job; page: Page }[] {
-  const jobs: { job: Job; page: Page }[] = [];
-  for (const page of mockSite.pages) {
-    for (const job of page.jobs) {
-      jobs.push({ job, page });
-    }
-  }
-  return jobs.sort((a, b) => b.job.createdAt.getTime() - a.job.createdAt.getTime());
+interface JobWithPage {
+  id: string;
+  status: JobStatus;
+  progress: number;
+  currentStep: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  page: {
+    id: string;
+    path: string;
+    fullUrl: string;
+  };
+  counts: FindingCountsType;
 }
 
-function JobRow({ job, page }: { job: Job; page: Page }) {
-  const findingCounts = job.findings.reduce(
-    (acc, f) => {
-      acc[f.severity]++;
-      return acc;
-    },
-    { critical: 0, warning: 0, info: 0 }
-  );
-
+function JobRow({ job }: { job: JobWithPage }) {
   return (
     <Link
       href={`/dashboard/jobs/${job.id}`}
@@ -38,7 +31,7 @@ function JobRow({ job, page }: { job: Job; page: Page }) {
       <StatusBadge status={job.status} size="sm" />
 
       <code className="text-sm font-medium bg-muted px-2 py-0.5 rounded min-w-[100px]">
-        {page.path}
+        {job.page.path}
       </code>
 
       <div className="flex-1 min-w-0 text-sm">
@@ -47,9 +40,12 @@ function JobRow({ job, page }: { job: Job; page: Page }) {
             {job.currentStep} <span className="text-primary font-medium">{job.progress}%</span>
           </span>
         )}
-        {job.status === 'completed' && <FindingCounts {...findingCounts} />}
+        {job.status === 'completed' && <FindingCounts {...job.counts} />}
         {job.status === 'failed' && (
           <span className="text-destructive">Analysis failed</span>
+        )}
+        {job.status === 'cancelled' && (
+          <span className="text-muted-foreground">Analysis cancelled</span>
         )}
         {job.status === 'pending' && (
           <span className="text-muted-foreground">Waiting in queue...</span>
@@ -66,10 +62,39 @@ function JobRow({ job, page }: { job: Job; page: Page }) {
 }
 
 export default function AllJobsPage() {
-  const allJobs = getAllJobs();
-  const runningCount = allJobs.filter(({ job }) => job.status === 'running').length;
-  const completedCount = allJobs.filter(({ job }) => job.status === 'completed').length;
-  const failedCount = allJobs.filter(({ job }) => job.status === 'failed').length;
+  const { activeSite, isLoading: siteLoading } = useSite();
+  const [jobs, setJobs] = useState<JobWithPage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchJobs = useCallback(async () => {
+    if (!activeSite) return;
+    setIsLoading(true);
+    try {
+      const data = await getJobs({ siteId: activeSite.id, limit: 50 });
+      setJobs(data.jobs as JobWithPage[]);
+    } catch (err) {
+      console.error('Failed to fetch jobs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeSite]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const runningCount = jobs.filter((j) => j.status === 'running').length;
+  const completedCount = jobs.filter((j) => j.status === 'completed').length;
+  const failedCount = jobs.filter((j) => j.status === 'failed').length;
+  const cancelledCount = jobs.filter((j) => j.status === 'cancelled').length;
+
+  if (siteLoading || !activeSite) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -79,7 +104,7 @@ export default function AllJobsPage() {
           <div>
             <h1 className="text-base font-semibold">All Jobs</h1>
             <p className="text-xs text-muted-foreground">
-              {allJobs.length} total &middot; {runningCount} running &middot; {completedCount} completed &middot; {failedCount} failed
+              {jobs.length} total &middot; {runningCount} running &middot; {completedCount} completed &middot; {failedCount} failed &middot; {cancelledCount} cancelled
             </p>
           </div>
         </div>
@@ -87,13 +112,17 @@ export default function AllJobsPage() {
 
       {/* Jobs list */}
       <div className="bg-card">
-        {allJobs.length === 0 ? (
+        {isLoading ? (
+          <div className="px-6 py-12 text-center">
+            <RefreshCw className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+          </div>
+        ) : jobs.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <p className="text-sm text-muted-foreground">No jobs yet</p>
           </div>
         ) : (
-          allJobs.map(({ job, page }) => (
-            <JobRow key={job.id} job={job} page={page} />
+          jobs.map((job) => (
+            <JobRow key={job.id} job={job} />
           ))
         )}
       </div>

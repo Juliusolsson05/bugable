@@ -1,0 +1,26 @@
+{
+  "name": "@bugable/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "latest",
+    "@sparticuz/chromium": "latest",
+    "@supabase/supabase-js": "^2.93.2",
+    "@bugable/db": "workspace:*",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

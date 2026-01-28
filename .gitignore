@@ -30,4 +30,5 @@ firebase-debug.log
 
 # temp files
 temp/
+temp_code/
 .vercel
