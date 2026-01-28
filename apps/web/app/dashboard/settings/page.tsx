@@ -58,7 +58,6 @@ function FieldRow({
 }
 
 export default function SettingsPage() {
-  const [siteUrl, setSiteUrl] = useState(mockSite.domain);
   const [displayName, setDisplayName] = useState(mockUser.displayName);
 
   const formatDate = (date: Date) => {
@@ -80,18 +79,9 @@ export default function SettingsPage() {
 
       <div className="px-6">
         {/* Site Section */}
-        <Section title="Site" description="Manage your site configuration">
+        <Section title="Site" description="Your site information">
           <FieldRow label="Site URL">
-            <div className="flex gap-2">
-              <Input
-                value={siteUrl}
-                onChange={(e) => setSiteUrl(e.target.value)}
-                placeholder="example.com"
-              />
-              <Button variant="outline" size="default">
-                Save
-              </Button>
-            </div>
+            <p className="text-sm py-2">{mockSite.domain}</p>
           </FieldRow>
 
           <FieldRow label="Created" description="When this site was added">
