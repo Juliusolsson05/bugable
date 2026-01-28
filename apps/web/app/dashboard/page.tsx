@@ -245,10 +245,10 @@ export default function DashboardPage() {
 
   pages.forEach((page) => {
     if (page.latestJob?.status === 'completed' && page.latestJob.counts) {
-      totalCritical += page.latestJob.counts.critical;
-      totalHigh += page.latestJob.counts.high;
-      totalMedium += page.latestJob.counts.medium;
-      totalLow += page.latestJob.counts.low;
+      totalCritical += page.latestJob.counts.critical || 0;
+      totalHigh += page.latestJob.counts.high || 0;
+      totalMedium += page.latestJob.counts.medium || 0;
+      totalLow += page.latestJob.counts.low || 0;
     }
   });
 
