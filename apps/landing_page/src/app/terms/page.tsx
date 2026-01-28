@@ -97,9 +97,9 @@ export default function TermsPage() {
                   Questions? Email:{" "}
                   <a
                     className="text-foreground underline"
-                    href="mailto:hello@bugable.ai"
+                    href="mailto:bugable.ai@gmail.com"
                   >
-                    hello@bugable.ai
+                    bugable.ai@gmail.com
                   </a>
                 </p>
               </section>

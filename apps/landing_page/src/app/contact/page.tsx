@@ -27,9 +27,9 @@ export default function ContactPage() {
               Or email:{" "}
               <a
                 className="text-foreground underline"
-                href="mailto:hello@bugable.ai"
+                href="mailto:bugable.ai@gmail.com"
               >
-                hello@bugable.ai
+                bugable.ai@gmail.com
               </a>
             </p>
           </div>
