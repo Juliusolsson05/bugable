@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { BugCheckSchema, NextActionSchema, type BugCheck, type NextAction } from './types';
-import { BUG_DETECTION_PROMPT, NEXT_ACTION_PROMPT } from './prompts';
+import { SYSTEM_PROMPT } from './prompts';
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
@@ -14,43 +14,50 @@ export class AIClient {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    // Initialize with system prompt for action planning
+    // Initialize with system prompt for both bug detection and action planning
     this.conversationHistory.push({
       role: 'system',
-      content: NEXT_ACTION_PROMPT
+      content: SYSTEM_PROMPT
     });
   }
 
   async detectBugs(screenshot: Buffer, url: string): Promise<BugCheck> {
-    // Bug detection uses separate conversation (stateless)
-    const response = await this.client.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
+    // Add bug detection request to conversation history
+    const userMessage: Message = {
+      role: 'user',
+      content: [
         {
-          role: 'system',
-          content: BUG_DETECTION_PROMPT
+          type: 'text',
+          text: `ANALYZE FOR BUGS:\nCurrent URL: ${url}\n\nAnalyze this screenshot for bugs.`
         },
         {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Analyzing page: ${url}`
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/png;base64,${screenshot.toString('base64')}`
-              }
-            }
-          ]
+          type: 'image_url',
+          image_url: {
+            url: `data:image/png;base64,${screenshot.toString('base64')}`
+          }
         }
-      ],
+      ]
+    };
+
+    this.conversationHistory.push(userMessage);
+
+    // Get AI response with full conversation history
+    const response = await this.client.chat.completions.create({
+      model: 'gpt-4o',
+      messages: this.conversationHistory,
       response_format: zodResponseFormat(BugCheckSchema, 'bug_check')
     });
 
     const content = response.choices[0].message.content!;
-    return BugCheckSchema.parse(JSON.parse(content));
+    const bugCheck = BugCheckSchema.parse(JSON.parse(content));
+
+    // Add assistant response to conversation history
+    this.conversationHistory.push({
+      role: 'assistant',
+      content
+    });
+
+    return bugCheck;
   }
 
   async planNextAction(screenshot: Buffer, url: string): Promise<NextAction> {
@@ -60,7 +67,7 @@ export class AIClient {
       content: [
         {
           type: 'text',
-          text: `Current URL: ${url}\n\nWhat should I do next?`
+          text: `PLAN NEXT ACTION:\nCurrent URL: ${url}\n\nWhat should I do next?`
         },
         {
           type: 'image_url',
@@ -97,7 +104,7 @@ export class AIClient {
     this.conversationHistory = [
       {
         role: 'system',
-        content: NEXT_ACTION_PROMPT
+        content: SYSTEM_PROMPT
       }
     ];
   }

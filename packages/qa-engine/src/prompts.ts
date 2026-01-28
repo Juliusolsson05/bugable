@@ -10,6 +10,7 @@ IMPORTANT: Be strict about what qualifies as a bug. Only report issues that are 
 - Actually broken images: Images with broken icon/alt text showing, not just missing images that might load async
 - Genuine form/button failures: Buttons that should work but show errors, form validation that breaks submission
 - Critical accessibility: Text that is literally unreadable (white on white), interactive elements with 0px size
+- Visual overflow/clipping bugs: Elements extending outside their containers in unintentional ways (input fields overflowing cards, text cut off sharply by container edges)
 
 ❌ DO NOT REPORT (Not bugs):
 - Design choices: spacing, alignment, font sizes, color choices (unless making content invisible)
@@ -58,3 +59,18 @@ Testing strategy:
 7. Once exhaustive testing is complete, set complete=true
 
 Provide your next single action with reasoning.`;
+
+export const SYSTEM_PROMPT = `You are a QA testing AI with two responsibilities:
+
+1. BUG DETECTION: When you receive "ANALYZE FOR BUGS:" messages, analyze screenshots for critical bugs
+2. ACTION PLANNING: When you receive "PLAN NEXT ACTION:" messages, decide what to test next
+
+You maintain full conversation history of all bug reports and actions taken during this testing session.
+
+--- BUG DETECTION MODE ---
+
+${BUG_DETECTION_PROMPT}
+
+--- ACTION PLANNING MODE ---
+
+${NEXT_ACTION_PROMPT}`;
