@@ -129,7 +129,7 @@ export function countFindingsBySeverity(findings: { severity: string }[]) {
   );
 }
 
-// Invoke worker to process a job
+// Invoke worker to process a job (fire-and-forget)
 export async function invokeWorker(jobId: string): Promise<void> {
   const workerUrl = process.env.WORKER_URL;
   const internalSecret = process.env.BUGABLE_INTERNAL_SECRET;
@@ -139,29 +139,17 @@ export async function invokeWorker(jobId: string): Promise<void> {
     throw new Error('Worker not configured');
   }
 
-  try {
-    const response = await fetch(`${workerUrl}/api/jobs/${jobId}/run`, {
-      method: 'POST',
-      headers: {
-        'X-Bugable-Internal-Secret': internalSecret,
-        'Content-Type': 'application/json',
-      },
-      signal: AbortSignal.timeout(5000), // 5s timeout for invocation
-    });
-
-    if (!response.ok) {
-      throw new Error(`Worker returned ${response.status}`);
-    }
-  } catch (error) {
-    // Mark job as failed if invocation fails
-    await prisma.job.update({
-      where: { id: jobId },
-      data: {
-        status: 'failed',
-        errorMessage: 'Failed to start worker',
-        completedAt: new Date()
-      }
-    });
-    throw error;
-  }
+  // Fire-and-forget: just trigger the worker, don't wait for response
+  // The worker will update the job status as it runs
+  fetch(`${workerUrl}/api/jobs/${jobId}/run`, {
+    method: 'POST',
+    headers: {
+      'X-Bugable-Internal-Secret': internalSecret,
+      'Content-Type': 'application/json',
+    },
+  }).catch((error) => {
+    // Log error but don't fail - let the job remain in 'pending' state
+    // so user can see it wasn't picked up by worker
+    console.error(`Failed to invoke worker for job ${jobId}:`, error);
+  });
 }
