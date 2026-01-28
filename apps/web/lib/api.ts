@@ -230,22 +230,25 @@ export async function getJob(
   jobId: string,
   options?: {
     includeFindings?: boolean;
-    includeLogs?: boolean;
+    includeEvents?: boolean;
     findingsLimit?: number;
-    logsLimit?: number;
+    eventsLimit?: number;
   }
 ): Promise<{
   job: Job;
   page: Page;
   site: { id: string; name: string; baseUrl: string };
   findings?: Finding[];
-  logs?: ReasoningLog[];
+  events?: any[];
+  screenshots?: Array<{ url: string; turn: number }>;
+  currentTurn?: number;
+  turns?: any[];
 }> {
   const params = new URLSearchParams();
   if (options?.includeFindings === false) params.set('includeFindings', 'false');
-  if (options?.includeLogs === false) params.set('includeLogs', 'false');
+  if (options?.includeEvents === false) params.set('includeEvents', 'false');
   if (options?.findingsLimit) params.set('findingsLimit', options.findingsLimit.toString());
-  if (options?.logsLimit) params.set('logsLimit', options.logsLimit.toString());
+  if (options?.eventsLimit) params.set('eventsLimit', options.eventsLimit.toString());
 
   const query = params.toString();
   return fetchApi(`/api/jobs/${jobId}${query ? `?${query}` : ''}`);

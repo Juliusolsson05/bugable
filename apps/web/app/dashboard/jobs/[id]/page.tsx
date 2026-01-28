@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Zap, Eye, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, SeverityBadge } from '@/components/status-badge';
 import { cn } from '@/lib/utils';
@@ -13,13 +13,13 @@ import {
   cancelJob,
   formatRelativeTime,
   type Finding,
-  type ReasoningLog,
   type Job,
   type Page,
   type JobStatus,
   type Severity,
   type Category,
 } from '@/lib/api';
+import type { JobEvent } from '@bugable/db';
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
@@ -115,7 +115,7 @@ function LiveViewPanel({
   );
 }
 
-function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: JobStatus }) {
+function ReasoningPanel({ events, status }: { events: JobEvent[]; status: JobStatus }) {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 border-b bg-muted/30">
@@ -123,29 +123,25 @@ function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: JobSta
         <p className="text-xs text-muted-foreground">Analysis log</p>
       </div>
       <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed">
-        {logs.length === 0 ? (
+        {events.length === 0 ? (
           <p className="text-muted-foreground">
-            {status === 'pending' ? 'Waiting to start...' : 'No logs'}
+            {status === 'pending' ? 'Waiting to start...' : 'No events'}
           </p>
         ) : (
           <div className="space-y-1.5">
-            {logs.map((log) => (
-              <div key={log.id} className="flex gap-3">
+            {events.map((event) => (
+              <div key={event.id} className="flex gap-3">
                 <span className="text-muted-foreground tabular-nums shrink-0">
-                  {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                  {new Date(event.timestamp).toLocaleTimeString('en-US', {
                     hour12: false,
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
                   })}
                 </span>
-                <span className="text-primary font-medium shrink-0">[{log.step}]</span>
-                <span className={cn(
-                  log.message.toLowerCase().includes('warning') || log.message.toLowerCase().includes('error')
-                    ? 'text-warning'
-                    : 'text-foreground'
-                )}>
-                  {log.message}
+                <span className="text-primary font-medium shrink-0">[{event.type}]</span>
+                <span className="text-foreground">
+                  {event.reasoning || event.action || event.error || `Turn ${event.turn}`}
                 </span>
               </div>
             ))}
@@ -174,12 +170,16 @@ function ReasoningPanel({ logs, status }: { logs: ReasoningLog[]; status: JobSta
 }
 
 const categoryIcons: Record<Category, React.ReactNode> = {
-  security: <Shield className="h-4 w-4" />,
-  ux: <MousePointer className="h-4 w-4" />,
-  ui: <Palette className="h-4 w-4" />,
-  performance: <Zap className="h-4 w-4" />,
+  error: <Shield className="h-4 w-4" />,
+  layout_broken: <Palette className="h-4 w-4" />,
+  image_broken: <Palette className="h-4 w-4" />,
+  form_validation: <MousePointer className="h-4 w-4" />,
   accessibility: <Eye className="h-4 w-4" />,
-  seo: <Eye className="h-4 w-4" />,
+  visual_overflow: <Palette className="h-4 w-4" />,
+  responsive_break: <Palette className="h-4 w-4" />,
+  typography: <Palette className="h-4 w-4" />,
+  interactive_fail: <MousePointer className="h-4 w-4" />,
+  contrast: <Eye className="h-4 w-4" />,
 };
 
 function FindingCard({ finding }: { finding: Finding }) {
@@ -321,7 +321,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [page, setPage] = useState<Page | null>(null);
   const [site, setSite] = useState<{ id: string; name: string; baseUrl: string } | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
-  const [logs, setLogs] = useState<ReasoningLog[]>([]);
+  const [events, setEvents] = useState<JobEvent[]>([]);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [currentTurn, setCurrentTurn] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -329,12 +329,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   const fetchJob = useCallback(async () => {
     try {
-      const data = await getJob(id, { includeFindings: true, includeLogs: true });
+      const data = await getJob(id, { includeFindings: true, includeEvents: true });
       setJob(data.job);
       setPage(data.page);
       setSite(data.site);
       setFindings(data.findings || []);
-      setLogs(data.logs || []);
+      setEvents(data.events || []);
       setScreenshots(data.screenshots || []);
       setCurrentTurn(data.currentTurn || 0);
     } catch (err) {
@@ -460,11 +460,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Content */}
       <div className="flex-1 flex flex-col">
-        {/* Live view + reasoning (only for running jobs or jobs with screenshots/logs) */}
-        {(job.status === 'running' || screenshots.length > 0 || logs.length > 0) && (
+        {/* Live view + reasoning (only for running jobs or jobs with screenshots/events) */}
+        {(job.status === 'running' || screenshots.length > 0 || events.length > 0) && (
           <div className="grid grid-cols-2 h-[500px] border-b">
             <LiveViewPanel status={job.status} screenshots={screenshots} currentTurn={currentTurn} />
-            <ReasoningPanel logs={logs} status={job.status} />
+            <ReasoningPanel events={events} status={job.status} />
           </div>
         )}
 
