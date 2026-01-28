@@ -11,7 +11,9 @@
     "test": "tsx src/index.ts"
   },
   "dependencies": {
-    "@browserbasehq/stagehand": "latest"
+    "@browserbasehq/stagehand": "latest",
+    "openai": "^4.77.3",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "tsx": "^4.7.0",
