@@ -7,9 +7,14 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "latest"
   },
   "devDependencies": {
+    "tsx": "^4.7.0",
     "typescript": "^5"
   }
 }
