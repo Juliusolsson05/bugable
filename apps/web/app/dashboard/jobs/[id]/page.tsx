@@ -33,7 +33,7 @@ function LiveViewPanel({ status }: { status: string }) {
         <p className="text-xs text-muted-foreground">What the AI sees</p>
       </div>
       <div className="flex-1 flex items-center justify-center p-4 bg-muted/20">
-        <div className="w-full max-w-sm aspect-[16/10] bg-card border rounded-lg shadow-sm flex items-center justify-center">
+        <div className="w-full max-w-sm aspect-[16/10] bg-card border flex items-center justify-center">
           {status === 'running' ? (
             <div className="text-center">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
@@ -130,7 +130,7 @@ function FindingCard({ finding }: { finding: Finding }) {
   }[finding.severity];
 
   return (
-    <div className={cn("border rounded-lg bg-card overflow-hidden border-l-[3px]", borderColor)}>
+    <div className={cn("border bg-card overflow-hidden border-l-[3px]", borderColor)}>
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 text-muted-foreground">
