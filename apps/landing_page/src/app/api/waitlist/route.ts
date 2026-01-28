@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { prisma } from "@bugable/db";
 
 export const runtime = "nodejs";
 
@@ -21,26 +21,23 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = supabaseServer();
-
-    const { error } = await supabase.from("waitlist").insert([{ email, source }]);
-
-    if (error) {
-      // Unique violation → treat as success or show friendly message
-      if (error.code === "23505") {
-        return NextResponse.json({ ok: true, already: true });
-      }
-
-      return NextResponse.json(
-        { ok: false, error: "Failed to save email." },
-        { status: 500 }
-      );
-    }
+    await prisma.waitlistEntry.create({
+      data: { email, source },
+    });
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    // Unique constraint violation - email already exists
+    if (
+      error instanceof Error &&
+      error.message.includes("Unique constraint")
+    ) {
+      return NextResponse.json({ ok: true, already: true });
+    }
+
+    console.error("Waitlist error:", error);
     return NextResponse.json(
-      { ok: false, error: "Something went wrong." },
+      { ok: false, error: "Failed to save email." },
       { status: 500 }
     );
   }
