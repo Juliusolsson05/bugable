@@ -8,7 +8,7 @@ import { GlitchEffect } from "./GlitchEffect";
 
 export function Hero() {
   return (
-    <section className="relative pt-24 pb-16 md:pt-28 md:pb-20 overflow-hidden">
+    <section className="relative pt-20 pb-12 md:pt-24 md:pb-16 overflow-hidden">
       {/* Glitch effect on edges */}
       <GlitchEffect />
 
@@ -42,7 +42,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex flex-col sm:flex-row gap-3 justify-center mb-6"
+            className="flex flex-col sm:flex-row gap-3 justify-center mb-4"
           >
             <Button size="lg" className="gap-2" asChild>
               <a href="#beta">
@@ -60,7 +60,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="max-w-2xl mx-auto -mb-8"
+            className="max-w-2xl mx-auto -mb-12"
           >
             <Image
               src="/hero-chameleon.png"
