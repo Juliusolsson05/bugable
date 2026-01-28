@@ -244,7 +244,7 @@ function ReasoningPanel({ events, status }: { events: JobEvent[]; status: JobSta
   );
 }
 
-const categoryIcons: Record<Category, React.ReactNode> = {
+const categoryIcons: Partial<Record<Category, React.ReactNode>> = {
   error: <Shield className="h-4 w-4" />,
   layout_broken: <Palette className="h-4 w-4" />,
   image_broken: <Palette className="h-4 w-4" />,
@@ -264,13 +264,14 @@ function FindingCard({ finding }: { finding: Finding }) {
     medium: 'border-l-info',
     low: 'border-l-muted-foreground/50',
   }[finding.severity];
+  const icon = categoryIcons[finding.category] ?? <Eye className="h-4 w-4" />;
 
   return (
     <div className={cn("border bg-card overflow-hidden border-l-[3px]", borderColor)}>
       <div className="p-4">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 text-muted-foreground">
-            {categoryIcons[finding.category]}
+            {icon}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
@@ -441,7 +442,7 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
                     >
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-muted-foreground">
-                          {categoryIcons[finding.category]}
+                          {categoryIcons[finding.category] ?? <Eye className="h-4 w-4" />}
                         </span>
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                           {finding.category}
@@ -481,10 +482,12 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [currentTurn, setCurrentTurn] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isActioning, setIsActioning] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchJob = useCallback(async () => {
     try {
-      const data = await getJob(id, { includeFindings: true, includeEvents: true });
+      setErrorMessage(null);
+      const data = await getJob(id, { includeEvents: true, eventsLimit: 2000 });
       setJob(data.job);
       setPage(data.page);
       setSite(data.site);
@@ -493,7 +496,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       setScreenshots(data.screenshots || []);
       setCurrentTurn(data.currentTurn || 0);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch job';
       console.error('Failed to fetch job:', err);
+      setErrorMessage(message);
     } finally {
       setIsLoading(false);
     }
@@ -547,7 +552,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">Job not found</p>
+          <p className="text-muted-foreground mb-4">
+            {errorMessage || 'Job not found'}
+          </p>
+          {errorMessage && (
+            <Button variant="outline" className="mb-3" onClick={fetchJob}>
+              Retry
+            </Button>
+          )}
           <Button variant="outline" asChild>
             <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
