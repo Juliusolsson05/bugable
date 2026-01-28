@@ -3,7 +3,7 @@
 import React, { use, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, SeverityBadge } from '@/components/status-badge';
@@ -304,13 +304,32 @@ function FindingCard({ finding }: { finding: Finding }) {
   );
 }
 
+type ViewMode = 'kanban' | 'list';
+
+const severityColumns: { key: Severity; label: string; color: string; bgColor: string }[] = [
+  { key: 'low', label: 'Low', color: 'bg-muted-foreground/50', bgColor: 'bg-muted/30' },
+  { key: 'medium', label: 'Medium', color: 'bg-info', bgColor: 'bg-info/10' },
+  { key: 'high', label: 'High', color: 'bg-warning', bgColor: 'bg-warning/10' },
+  { key: 'critical', label: 'Critical', color: 'bg-destructive', bgColor: 'bg-destructive/10' },
+];
+
 function FindingsSection({ findings, status }: { findings: Finding[]; status: JobStatus }) {
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+
   const counts = findings.reduce(
     (acc, f) => {
       acc[f.severity]++;
       return acc;
     },
     { critical: 0, high: 0, medium: 0, low: 0 } as Record<Severity, number>
+  );
+
+  const findingsBySeverity = findings.reduce(
+    (acc, f) => {
+      acc[f.severity].push(f);
+      return acc;
+    },
+    { critical: [], high: [], medium: [], low: [] } as Record<Severity, Finding[]>
   );
 
   return (
@@ -322,30 +341,56 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
             {status === 'running' ? 'Detected during analysis' : status === 'completed' ? 'Analysis complete' : 'Issues detected'}
           </p>
         </div>
-        <div className="flex items-center gap-4 text-xs">
-          {counts.critical > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-destructive" />
-              {counts.critical} critical
-            </span>
-          )}
-          {counts.high > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-warning" />
-              {counts.high} high
-            </span>
-          )}
-          {counts.medium > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-info" />
-              {counts.medium} medium
-            </span>
-          )}
-          {counts.low > 0 && (
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
-              {counts.low} low
-            </span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-xs">
+            {counts.critical > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-destructive" />
+                {counts.critical} critical
+              </span>
+            )}
+            {counts.high > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-warning" />
+                {counts.high} high
+              </span>
+            )}
+            {counts.medium > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-info" />
+                {counts.medium} medium
+              </span>
+            )}
+            {counts.low > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                {counts.low} low
+              </span>
+            )}
+          </div>
+          {findings.length > 0 && (
+            <div className="flex items-center border rounded-md">
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={cn(
+                  "p-1.5 rounded-l-md transition-colors",
+                  viewMode === 'kanban' ? "bg-muted" : "hover:bg-muted/50"
+                )}
+                title="Kanban view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  "p-1.5 rounded-r-md transition-colors",
+                  viewMode === 'list' ? "bg-muted" : "hover:bg-muted/50"
+                )}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -376,6 +421,41 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
             ) : (
               <p className="text-sm text-muted-foreground">No findings</p>
             )}
+          </div>
+        ) : viewMode === 'kanban' ? (
+          <div className="grid grid-cols-4 gap-4">
+            {severityColumns.map((col) => (
+              <div key={col.key} className={cn("rounded-lg border", col.bgColor)}>
+                <div className="px-3 py-2 border-b flex items-center gap-2">
+                  <span className={cn("w-2 h-2 rounded-full", col.color)} />
+                  <span className="text-sm font-medium">{col.label}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {counts[col.key]}
+                  </span>
+                </div>
+                <div className="p-2 space-y-2 min-h-[100px]">
+                  {findingsBySeverity[col.key].map((finding) => (
+                    <div
+                      key={finding.id}
+                      className="bg-card border rounded-md p-3 text-sm"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-muted-foreground">
+                          {categoryIcons[finding.category]}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          {finding.category}
+                        </span>
+                      </div>
+                      <h4 className="font-medium text-xs leading-snug">{finding.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {finding.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-3 max-w-2xl">
