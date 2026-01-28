@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useCallback } from 'react';
+import React, { use, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -179,13 +179,25 @@ function LiveViewPanel({
 }
 
 function ReasoningPanel({ events, status }: { events: JobEvent[]; status: JobStatus }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new events come in (tailing)
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [events.length]);
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b bg-muted/30">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-4 py-3 border-b bg-muted/30 shrink-0">
         <h3 className="text-sm font-medium">AI Reasoning</h3>
         <p className="text-xs text-muted-foreground">Analysis log</p>
       </div>
-      <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed">
+      <div
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto p-4 font-mono text-xs leading-relaxed"
+      >
         {events.length === 0 ? (
           <p className="text-muted-foreground">
             {status === 'pending' ? 'Waiting to start...' : 'No events'}
