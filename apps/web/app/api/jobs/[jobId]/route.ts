@@ -85,6 +85,17 @@ export async function GET(
       }
     }
 
+    // Extract screenshots from turns for easy slider access
+    const screenshots = turns
+      .filter(t => t.screenshotUrl)
+      .map(t => ({
+        url: t.screenshotUrl,
+        turn: t.number,
+      }));
+
+    // Get current turn from latest turn_started event
+    const currentTurn = Math.max(0, ...turns.map(t => t.number));
+
     // Transform response
     const response = {
       job: {
@@ -118,6 +129,8 @@ export async function GET(
         baseUrl: job.page.site.baseUrl,
       },
       findings,
+      screenshots,
+      currentTurn,
       turns,
       ...(includeEvents ? { events: job.events } : {}),
     };

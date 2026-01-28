@@ -3,7 +3,7 @@
 import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Zap, Eye, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Zap, Eye, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge, SeverityBadge } from '@/components/status-badge';
 import { cn } from '@/lib/utils';
@@ -32,17 +32,70 @@ function ProgressBar({ progress }: { progress: number }) {
   );
 }
 
-function LiveViewPanel({ status, screenshotUrl }: { status: JobStatus; screenshotUrl?: string | null }) {
+interface Screenshot {
+  url: string;
+  turn: number;
+}
+
+function LiveViewPanel({
+  status,
+  screenshots,
+  currentTurn
+}: {
+  status: JobStatus;
+  screenshots: Screenshot[];
+  currentTurn: number;
+}) {
+  const [selectedIndex, setSelectedIndex] = useState(screenshots.length > 0 ? screenshots.length - 1 : 0);
+
+  // Auto-update to latest when new screenshots come in
+  useEffect(() => {
+    if (status === 'running' && screenshots.length > 0) {
+      setSelectedIndex(screenshots.length - 1);
+    }
+  }, [screenshots.length, status]);
+
+  const currentScreenshot = screenshots[selectedIndex];
+  const hasPrev = selectedIndex > 0;
+  const hasNext = selectedIndex < screenshots.length - 1;
+
   return (
     <div className="flex flex-col h-full border-r">
-      <div className="px-4 py-3 border-b bg-muted/30">
-        <h3 className="text-sm font-medium">Live View</h3>
-        <p className="text-xs text-muted-foreground">What the AI sees</p>
+      <div className="px-6 py-3 border-b bg-muted/30 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-medium">Live View</h3>
+          <p className="text-xs text-muted-foreground">What the AI sees</p>
+        </div>
+        {screenshots.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedIndex(i => i - 1)}
+              disabled={!hasPrev}
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-xs text-muted-foreground tabular-nums min-w-[60px] text-center">
+              Turn {currentScreenshot?.turn || selectedIndex + 1} / {currentTurn || screenshots.length}
+            </span>
+            <button
+              onClick={() => setSelectedIndex(i => i + 1)}
+              disabled={!hasNext}
+              className="p-1 rounded hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
-      <div className="flex-1 flex items-center justify-center p-4 bg-muted/20">
-        <div className="w-full max-w-sm aspect-[16/10] bg-card border flex items-center justify-center overflow-hidden">
-          {screenshotUrl ? (
-            <img src={screenshotUrl} alt="Screenshot" className="w-full h-full object-cover" />
+      <div className="flex-1 min-h-0 flex items-center justify-center p-6 bg-muted/20">
+        <div className="w-full h-full max-h-full bg-card border rounded-lg flex items-center justify-center overflow-hidden">
+          {currentScreenshot ? (
+            <img
+              src={currentScreenshot.url}
+              alt={`Turn ${currentScreenshot.turn} screenshot`}
+              className="max-w-full max-h-full object-contain"
+            />
           ) : status === 'running' ? (
             <div className="text-center">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
@@ -51,15 +104,12 @@ function LiveViewPanel({ status, screenshotUrl }: { status: JobStatus; screensho
           ) : status === 'completed' ? (
             <div className="text-center text-muted-foreground">
               <Eye className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              <p className="text-xs">No screenshot</p>
+              <p className="text-xs">No screenshot available</p>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">No preview</p>
+            <p className="text-xs text-muted-foreground">No preview available</p>
           )}
         </div>
-      </div>
-      <div className="px-4 py-2 border-t bg-muted/30 text-[11px] text-muted-foreground font-mono">
-        Viewport: 1920 x 1080
       </div>
     </div>
   );
@@ -194,7 +244,7 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
         <div>
           <h3 className="text-sm font-medium">Findings</h3>
           <p className="text-xs text-muted-foreground">
-            {status === 'running' ? 'Issues found so far' : 'Analysis results'}
+            {status === 'running' ? 'Detected during analysis' : status === 'completed' ? 'Analysis complete' : 'Issues detected'}
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs">
@@ -272,6 +322,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [site, setSite] = useState<{ id: string; name: string; baseUrl: string } | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [logs, setLogs] = useState<ReasoningLog[]>([]);
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+  const [currentTurn, setCurrentTurn] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isActioning, setIsActioning] = useState(false);
 
@@ -283,6 +335,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       setSite(data.site);
       setFindings(data.findings || []);
       setLogs(data.logs || []);
+      setScreenshots(data.screenshots || []);
+      setCurrentTurn(data.currentTurn || 0);
     } catch (err) {
       console.error('Failed to fetch job:', err);
     } finally {
@@ -406,10 +460,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Content */}
       <div className="flex-1 flex flex-col">
-        {/* Live view + reasoning (only for running jobs or jobs with logs) */}
-        {(job.status === 'running' || logs.length > 0) && (
-          <div className="grid grid-cols-2 h-72 border-b">
-            <LiveViewPanel status={job.status} screenshotUrl={job.screenshotUrl} />
+        {/* Live view + reasoning (only for running jobs or jobs with screenshots/logs) */}
+        {(job.status === 'running' || screenshots.length > 0 || logs.length > 0) && (
+          <div className="grid grid-cols-2 h-[500px] border-b">
+            <LiveViewPanel status={job.status} screenshots={screenshots} currentTurn={currentTurn} />
             <ReasoningPanel logs={logs} status={job.status} />
           </div>
         )}

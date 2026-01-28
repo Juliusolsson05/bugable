@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronRight, RefreshCw } from 'lucide-react';
 import { StatusBadge, FindingCounts } from '@/components/status-badge';
 import { useSite } from '@/components/site-provider';
+import { cn } from '@/lib/utils';
 import { getJobs, formatRelativeTime, type JobStatus, type FindingCounts as FindingCountsType } from '@/lib/api';
 
 interface JobWithPage {
@@ -22,17 +23,23 @@ interface JobWithPage {
   counts: FindingCountsType;
 }
 
-function JobRow({ job }: { job: JobWithPage }) {
+interface PageGroup {
+  pageId: string;
+  path: string;
+  jobs: JobWithPage[];
+  latestJob: JobWithPage;
+}
+
+function JobRow({ job, isLast }: { job: JobWithPage; isLast: boolean }) {
   return (
     <Link
       href={`/dashboard/jobs/${job.id}`}
-      className="flex items-center gap-4 px-6 py-3 border-b last:border-b-0 hover:bg-accent/50 transition-colors group"
+      className={cn(
+        "flex items-center gap-4 px-6 py-3 hover:bg-accent/50 transition-colors group",
+        !isLast && "border-b"
+      )}
     >
       <StatusBadge status={job.status} size="sm" />
-
-      <code className="text-sm font-medium bg-muted px-2 py-0.5 rounded min-w-[100px]">
-        {job.page.path}
-      </code>
 
       <div className="flex-1 min-w-0 text-sm">
         {job.status === 'running' && (
@@ -61,6 +68,50 @@ function JobRow({ job }: { job: JobWithPage }) {
   );
 }
 
+function PageCard({ group }: { group: PageGroup }) {
+  const [expanded, setExpanded] = useState(
+    group.latestJob.status === 'running' || group.jobs.length <= 2
+  );
+
+  return (
+    <div className="bg-card overflow-hidden">
+      <div
+        className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-accent/30 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <ChevronRight className={cn(
+          "h-4 w-4 text-muted-foreground transition-transform",
+          expanded && "rotate-90"
+        )} />
+
+        <code className="text-sm font-semibold text-foreground bg-muted px-2 py-0.5 rounded">
+          {group.path}
+        </code>
+
+        <StatusBadge status={group.latestJob.status} size="sm" />
+
+        <div className="flex-1" />
+
+        {group.latestJob.status === 'completed' && (
+          <FindingCounts {...group.latestJob.counts} />
+        )}
+
+        <span className="text-xs text-muted-foreground">
+          {group.jobs.length} {group.jobs.length === 1 ? 'run' : 'runs'}
+        </span>
+      </div>
+
+      {expanded && (
+        <div className="border-t bg-background">
+          {group.jobs.map((job, i) => (
+            <JobRow key={job.id} job={job} isLast={i === group.jobs.length - 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AllJobsPage() {
   const { activeSite, isLoading: siteLoading } = useSite();
   const [jobs, setJobs] = useState<JobWithPage[]>([]);
@@ -82,6 +133,26 @@ export default function AllJobsPage() {
   useEffect(() => {
     fetchJobs();
   }, [fetchJobs]);
+
+  // Group jobs by page
+  const pageGroups: PageGroup[] = [];
+  const pageMap = new Map<string, PageGroup>();
+
+  jobs.forEach((job) => {
+    const existing = pageMap.get(job.page.id);
+    if (existing) {
+      existing.jobs.push(job);
+    } else {
+      const group: PageGroup = {
+        pageId: job.page.id,
+        path: job.page.path,
+        jobs: [job],
+        latestJob: job,
+      };
+      pageMap.set(job.page.id, group);
+      pageGroups.push(group);
+    }
+  });
 
   const runningCount = jobs.filter((j) => j.status === 'running').length;
   const completedCount = jobs.filter((j) => j.status === 'completed').length;
@@ -110,22 +181,22 @@ export default function AllJobsPage() {
         </div>
       </header>
 
-      {/* Jobs list */}
-      <div className="bg-card">
-        {isLoading ? (
-          <div className="px-6 py-12 text-center">
-            <RefreshCw className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-          </div>
-        ) : jobs.length === 0 ? (
-          <div className="px-6 py-12 text-center">
-            <p className="text-sm text-muted-foreground">No jobs yet</p>
-          </div>
-        ) : (
-          jobs.map((job) => (
-            <JobRow key={job.id} job={job} />
-          ))
-        )}
-      </div>
+      {/* Jobs grouped by page */}
+      {isLoading ? (
+        <div className="px-6 py-12 text-center">
+          <RefreshCw className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+        </div>
+      ) : pageGroups.length === 0 ? (
+        <div className="px-6 py-12 text-center">
+          <p className="text-sm text-muted-foreground">No jobs yet</p>
+        </div>
+      ) : (
+        <div className="divide-y">
+          {pageGroups.map((group) => (
+            <PageCard key={group.pageId} group={group} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
