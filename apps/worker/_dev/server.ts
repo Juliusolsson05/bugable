@@ -6,8 +6,8 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env.local
-config({ path: join(__dirname, '..', '.env.local') });
+// Load .env from monorepo root
+config({ path: join(__dirname, '..', '..', '..', '.env') });
 
 const PORT = 3001;
 
