@@ -2,25 +2,23 @@
   "name": "@bugable/worker",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --port 3001",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "tsx watch _dev/server.ts",
+    "build": "tsc --noEmit",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "latest",
     "@sparticuz/chromium": "latest",
     "@supabase/supabase-js": "^2.93.2",
     "@bugable/db": "workspace:*",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "@vercel/node": "^3.2.27",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "typescript": "^5"
+    "typescript": "^5",
+    "tsx": "^4.19.2"
   }
 }
