@@ -86,7 +86,7 @@ function JobRow({ job, isLast }: { job: PageJob; isLast: boolean }) {
           </span>
         )}
         {job.status === 'completed' && job.counts && (
-          <FindingCounts critical={job.counts.critical} warning={job.counts.warning} info={job.counts.info} />
+          <FindingCounts critical={job.counts.critical} high={job.counts.high} medium={job.counts.medium} low={job.counts.low} />
         )}
         {job.status === 'failed' && (
           <span className="text-destructive">Analysis failed</span>
@@ -239,12 +239,16 @@ export default function DashboardPage() {
   const runningJobs = pages.filter(p => p.latestJob?.status === 'running').length;
 
   let totalCritical = 0;
-  let totalWarning = 0;
+  let totalHigh = 0;
+  let totalMedium = 0;
+  let totalLow = 0;
 
   pages.forEach((page) => {
     if (page.latestJob?.status === 'completed' && page.latestJob.counts) {
       totalCritical += page.latestJob.counts.critical;
-      totalWarning += page.latestJob.counts.warning;
+      totalHigh += page.latestJob.counts.high;
+      totalMedium += page.latestJob.counts.medium;
+      totalLow += page.latestJob.counts.low;
     }
   });
 
@@ -282,8 +286,8 @@ export default function DashboardPage() {
           <StatsCard label="Running" value={runningJobs} valueColor={runningJobs > 0 ? "text-primary" : undefined} />
           <StatsCard
             label="Open Issues"
-            value={totalCritical + totalWarning}
-            valueColor={totalCritical > 0 ? "text-destructive" : totalWarning > 0 ? "text-warning" : "text-success"}
+            value={totalCritical + totalHigh + totalMedium + totalLow}
+            valueColor={totalCritical > 0 ? "text-destructive" : totalHigh > 0 ? "text-warning" : totalMedium > 0 ? "text-info" : "text-success"}
           />
         </div>
       </div>
