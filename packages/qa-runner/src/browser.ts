@@ -60,6 +60,17 @@ export class Browser {
     await this.stagehand.act(action);
   }
 
+  async getCurrentUrl(): Promise<string> {
+    if (!this.stagehand) {
+      throw new Error('Browser not initialized. Call init() first.');
+    }
+    const page = this.stagehand.context.activePage();
+    if (!page) {
+      throw new Error('No page available');
+    }
+    return page.url();
+  }
+
   async close() {
     if (this.stagehand) {
       await this.stagehand.close();

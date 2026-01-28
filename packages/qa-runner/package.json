@@ -18,7 +18,7 @@
     "test": "tsx test.ts"
   },
   "dependencies": {
-    "@browserbasehq/stagehand": "latest",
+    "@browserbasehq/stagehand": "^3.0.8",
     "dotenv": "^16.6.1",
     "openai": "^4.77.3",
     "zod": "^3.25.76"

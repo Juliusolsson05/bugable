@@ -1,7 +1,6 @@
 import { Browser, BrowserConfig } from "./browser";
 import { AIClient } from "./ai-client";
 import { TestConfig, TestResult, Finding, ActionLog, QAEvent } from "./types";
-import { sleep } from "./utils";
 
 export class QARunner {
   private browser: Browser;
@@ -62,11 +61,15 @@ export class QARunner {
           screenshot,
         };
 
-        // 2. Check for bugs
+        // Get current URL (may have changed from navigation)
+        const currentUrl = await this.browser.getCurrentUrl();
+
+        // 2. Check for bugs (pass current URL and actual turn number)
         const bugCheck = await this.aiClient.detectBugs(
           screenshot,
-          url,
+          currentUrl,
           this.findings,
+          this.currentTurn,
         );
 
         // 3. Store new findings
@@ -94,8 +97,9 @@ export class QARunner {
           totalFindings: this.findings.length,
         };
 
-        // 4. Plan next action (AI has memory, doesn't need history passed)
-        const nextAction = await this.aiClient.planNextAction(screenshot, url);
+        // 4. Plan next action (pass action history for context)
+        const actionHistory = this.actionLog.map(a => a.action);
+        const nextAction = await this.aiClient.planNextAction(screenshot, currentUrl, actionHistory);
 
         // Yield action planned event
         yield {
@@ -158,8 +162,7 @@ export class QARunner {
           turn: this.currentTurn,
         };
 
-        // Brief pause between actions
-        await sleep(1000);
+        // Note: Removed sleep between turns for serverless performance
       }
 
       // Build final result

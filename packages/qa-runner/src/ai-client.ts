@@ -7,21 +7,14 @@ type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
 export class AIClient {
   private client: OpenAI;
-  private conversationHistory: Message[] = [];
 
   constructor() {
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     });
-
-    // Initialize with system prompt for both bug detection and action planning
-    this.conversationHistory.push({
-      role: 'system',
-      content: SYSTEM_PROMPT
-    });
   }
 
-  async detectBugs(screenshot: Buffer, url: string, existingFindings: Finding[]): Promise<BugCheck> {
+  async detectBugs(screenshot: Buffer, url: string, existingFindings: Finding[], turn: number): Promise<BugCheck> {
     // Build summary of already-reported bugs
     const bugSummary = existingFindings.length > 0
       ? `\n\nBUGS ALREADY REPORTED (do not report these again):\n${existingFindings.map((f, i) =>
@@ -29,95 +22,76 @@ export class AIClient {
         ).join('\n')}`
       : '';
 
-    // Add bug detection request to conversation history
-    const userMessage: Message = {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: `ANALYZE FOR BUGS:\nCurrent URL: ${url}\nTurn: ${existingFindings.length + 1}${bugSummary}\n\nAnalyze this screenshot for NEW bugs only.`
-        },
-        {
-          type: 'image_url',
-          image_url: {
-            url: `data:image/png;base64,${screenshot.toString('base64')}`
+    // Build fresh messages for this request (don't accumulate old screenshots)
+    const messages: Message[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `ANALYZE FOR BUGS:\nCurrent URL: ${url}\nTurn: ${turn}${bugSummary}\n\nAnalyze this screenshot for NEW bugs only.`
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:image/png;base64,${screenshot.toString('base64')}`
+            }
           }
-        }
-      ]
-    };
+        ]
+      }
+    ];
 
-    this.conversationHistory.push(userMessage);
-
-    // Get AI response with full conversation history
+    // Get AI response (stateless per-request, context via bugSummary)
     const response = await this.client.chat.completions.create({
       model: 'gpt-4o',
-      messages: this.conversationHistory,
+      messages,
       response_format: zodResponseFormat(BugCheckSchema, 'bug_check')
     });
 
     const content = response.choices[0].message.content!;
     const bugCheck = BugCheckSchema.parse(JSON.parse(content));
 
-    // Add assistant response to conversation history
-    this.conversationHistory.push({
-      role: 'assistant',
-      content
-    });
-
     return bugCheck;
   }
 
-  async planNextAction(screenshot: Buffer, url: string): Promise<NextAction> {
-    // Add current screenshot and URL to conversation
-    const userMessage: Message = {
-      role: 'user',
-      content: [
-        {
-          type: 'text',
-          text: `PLAN NEXT ACTION:\nCurrent URL: ${url}\n\nWhat should I do next?`
-        },
-        {
-          type: 'image_url',
-          image_url: {
-            url: `data:image/png;base64,${screenshot.toString('base64')}`
+  async planNextAction(screenshot: Buffer, url: string, actionHistory: string[] = []): Promise<NextAction> {
+    // Build action history summary to avoid repeating actions
+    const historySummary = actionHistory.length > 0
+      ? `\n\nACTIONS ALREADY TAKEN:\n${actionHistory.slice(-10).map((a, i) => `${i + 1}. ${a}`).join('\n')}`
+      : '';
+
+    // Build fresh messages for this request (don't accumulate old screenshots)
+    const messages: Message[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `PLAN NEXT ACTION:\nCurrent URL: ${url}${historySummary}\n\nWhat should I do next?`
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:image/png;base64,${screenshot.toString('base64')}`
+            }
           }
-        }
-      ]
-    };
+        ]
+      }
+    ];
 
-    this.conversationHistory.push(userMessage);
-
-    // Get AI response with full conversation history
+    // Get AI response (stateless per-request, context via historySummary)
     const response = await this.client.chat.completions.create({
       model: 'gpt-4o',
-      messages: this.conversationHistory,
+      messages,
       response_format: zodResponseFormat(NextActionSchema, 'next_action')
     });
 
     const content = response.choices[0].message.content!;
     const nextAction = NextActionSchema.parse(JSON.parse(content));
 
-    // Add assistant response to conversation history
-    this.conversationHistory.push({
-      role: 'assistant',
-      content
-    });
-
     return nextAction;
   }
 
-  // Optional: Method to clear conversation history if needed
-  clearHistory() {
-    this.conversationHistory = [
-      {
-        role: 'system',
-        content: SYSTEM_PROMPT
-      }
-    ];
-  }
-
-  // Optional: Get conversation length for debugging
-  getHistoryLength(): number {
-    return this.conversationHistory.length;
-  }
 }

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { prisma } from '@bugable/db';
+import { prisma, type Prisma } from '@bugable/db';
 import { QARunner, type QAEvent, type Finding } from '@bugable/qa-runner';
 import { createClient } from '@supabase/supabase-js';
 import chromium from '@sparticuz/chromium';
@@ -48,8 +48,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Job already started or completed' });
     }
 
-    const url = `https://${job.page.site.baseUrl}${job.page.path}`;
-    const maxTurns = 50;
+    // Safely construct URL (handles https://, trailing slashes, etc.)
+    const base = job.page.site.baseUrl.startsWith('http')
+      ? job.page.site.baseUrl
+      : `https://${job.page.site.baseUrl}`;
+    const url = new URL(job.page.path || '/', base).toString();
+    // Limit turns for serverless (60s timeout) - 10 turns is realistic
+    const maxTurns = Math.min(job.maxTurns || 10, 10);
 
     // 2. Configure QA Runner with serverless browser
     const qaRunner = new QARunner({
@@ -122,6 +127,10 @@ async function uploadScreenshot(
 
   return data.publicUrl;
 }
+
+// Helper to make objects JSON-safe (converts Date to ISO string)
+const jsonSafe = (value: unknown): Prisma.InputJsonValue =>
+  JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 
 async function handleQAEvent(
   jobId: string,
@@ -310,13 +319,13 @@ async function handleQAEvent(
       break;
 
     case 'test_completed':
-      // Create event record with full result
+      // Create event record with full result (jsonSafe converts Date to string)
       await prisma.jobEvent.create({
         data: {
           jobId,
           type: 'test_completed',
           turn: event.turn,
-          result: event.result as any  // Stored as JSON
+          result: jsonSafe(event.result)
         }
       });
 
@@ -334,14 +343,14 @@ async function handleQAEvent(
       break;
 
     case 'test_error':
-      // Create event record
+      // Create event record (jsonSafe converts Date to string)
       await prisma.jobEvent.create({
         data: {
           jobId,
           type: 'test_error',
           turn: event.turn,
           error: event.error,
-          partialResult: event.partialResult as any  // Stored as JSON
+          partialResult: event.partialResult ? jsonSafe(event.partialResult) : undefined
         }
       });
 

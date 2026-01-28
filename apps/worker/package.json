@@ -9,7 +9,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@sparticuz/chromium": "latest",
+    "@sparticuz/chromium": "^143.0.4",
     "@supabase/supabase-js": "^2.93.2",
     "@bugable/db": "workspace:*",
     "@bugable/qa-runner": "workspace:*",
