@@ -1,0 +1,211 @@
+@startuml Bugable Database Schema
+
+!define PRIMARY_KEY(x) <b><color:#b8860b><&key></color> x</b>
+!define FOREIGN_KEY(x) <color:#aaaaaa><&link-intact></color> x
+!define COLUMN(x) <color:#efefef><&media-record></color> x
+!define INDEX(x) <color:#6a9fb5><&list></color> x
+
+title Bugable Database Schema
+
+' ============================================
+' ENUMS
+' ============================================
+
+enum JobStatus {
+  pending
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum CompletionReason {
+  done
+  max_turns
+  error
+}
+
+enum FindingSeverity {
+  critical
+  high
+  medium
+  low
+}
+
+enum FindingCategory {
+  error
+  layout_broken
+  image_broken
+  form_validation
+  accessibility
+  visual_overflow
+  responsive_break
+  typography
+  interactive_fail
+  contrast
+}
+
+' ============================================
+' CORE MODELS
+' ============================================
+
+entity "profiles" as Profile {
+  PRIMARY_KEY(id) : UUID
+  --
+  COLUMN(email) : String?
+  COLUMN(full_name) : String?
+  COLUMN(avatar_url) : String?
+  COLUMN(created_at) : DateTime
+  COLUMN(updated_at) : DateTime
+  --
+  <i>Extends Supabase auth.users</i>
+}
+
+entity "sites" as Site {
+  PRIMARY_KEY(id) : UUID
+  --
+  FOREIGN_KEY(user_id) : UUID
+  COLUMN(name) : String
+  COLUMN(base_url) : String
+  COLUMN(created_at) : DateTime
+  COLUMN(updated_at) : DateTime
+  --
+  INDEX(user_id)
+}
+
+entity "pages" as Page {
+  PRIMARY_KEY(id) : UUID
+  --
+  FOREIGN_KEY(site_id) : UUID
+  COLUMN(path) : String
+  COLUMN(title) : String?
+  COLUMN(created_at) : DateTime
+  COLUMN(updated_at) : DateTime
+  --
+  INDEX(site_id)
+  <i>UNIQUE(site_id, path)</i>
+}
+
+entity "jobs" as Job {
+  PRIMARY_KEY(id) : UUID
+  --
+  FOREIGN_KEY(page_id) : UUID
+  COLUMN(status) : JobStatus
+  COLUMN(progress) : Int
+  COLUMN(current_step) : String?
+  COLUMN(total_turns) : Int?
+  COLUMN(completion_reason) : CompletionReason?
+  COLUMN(error_message) : String?
+  COLUMN(started_at) : DateTime?
+  COLUMN(completed_at) : DateTime?
+  COLUMN(created_at) : DateTime
+  COLUMN(updated_at) : DateTime
+  --
+  INDEX(page_id)
+  INDEX(status)
+  INDEX(created_at DESC)
+}
+
+entity "turns" as Turn {
+  PRIMARY_KEY(id) : UUID
+  --
+  FOREIGN_KEY(job_id) : UUID
+  COLUMN(number) : Int
+  COLUMN(action) : String?
+  COLUMN(reasoning) : String
+  COLUMN(screenshot_url) : String?
+  COLUMN(created_at) : DateTime
+  --
+  INDEX(job_id)
+  <i>UNIQUE(job_id, number)</i>
+}
+
+entity "findings" as Finding {
+  PRIMARY_KEY(id) : UUID
+  --
+  FOREIGN_KEY(job_id) : UUID
+  FOREIGN_KEY(turn_id) : UUID?
+  COLUMN(severity) : FindingSeverity
+  COLUMN(category) : FindingCategory
+  COLUMN(title) : String
+  COLUMN(description) : String
+  COLUMN(location) : String
+  COLUMN(created_at) : DateTime
+  --
+  INDEX(job_id)
+  INDEX(turn_id)
+  INDEX(severity)
+}
+
+' ============================================
+' MARKETING MODELS (isolated)
+' ============================================
+
+entity "waitlist" as WaitlistEntry {
+  PRIMARY_KEY(id) : UUID
+  --
+  COLUMN(email) : String <<unique>>
+  COLUMN(source) : String
+  COLUMN(created_at) : DateTime
+  --
+  INDEX(created_at DESC)
+}
+
+entity "contact_messages" as ContactMessage {
+  PRIMARY_KEY(id) : UUID
+  --
+  COLUMN(name) : String?
+  COLUMN(email) : String
+  COLUMN(message) : String
+  COLUMN(created_at) : DateTime
+  --
+  INDEX(created_at DESC)
+}
+
+' ============================================
+' RELATIONSHIPS
+' ============================================
+
+Profile ||--o{ Site : "has many"
+Site ||--o{ Page : "has many"
+Page ||--o{ Job : "has many"
+Job ||--o{ Turn : "has many"
+Job ||--o{ Finding : "has many"
+Turn ||--o{ Finding : "has many"
+
+' Enum associations
+Job ..> JobStatus : uses
+Job ..> CompletionReason : uses
+Finding ..> FindingSeverity : uses
+Finding ..> FindingCategory : uses
+
+' ============================================
+' NOTES
+' ============================================
+
+note right of Profile
+  Linked to Supabase Auth
+  ID matches auth.users.id
+end note
+
+note right of Turn
+  Turn 1: Initial observation (no action)
+  Turn 2+: Action taken + observation
+  Each turn has a screenshot
+end note
+
+note right of Finding
+  Bugs discovered during QA testing
+  Linked to specific turn where detected
+  Human-readable location text
+end note
+
+note bottom of WaitlistEntry
+  Marketing - isolated from core app
+end note
+
+note bottom of ContactMessage
+  Marketing - isolated from core app
+end note
+
+@enduml

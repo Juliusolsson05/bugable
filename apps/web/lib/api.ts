@@ -2,7 +2,17 @@
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
-export type Category = 'ux' | 'ui' | 'security' | 'performance' | 'accessibility' | 'seo';
+export type Category =
+  | 'error'              // Console errors, crashes, 404s
+  | 'layout_broken'      // Overlapping content, broken layouts
+  | 'image_broken'       // Broken image links
+  | 'form_validation'    // Form/input issues
+  | 'accessibility'      // Contrast, click targets, screen readers
+  | 'visual_overflow'    // Content extending beyond containers
+  | 'responsive_break'   // Mobile/tablet layout issues
+  | 'typography'         // Text truncation, readability
+  | 'interactive_fail'   // Buttons, links not working
+  | 'contrast';          // Low contrast issues
 
 export interface Site {
   id: string;
@@ -254,6 +264,17 @@ export async function cancelJob(jobId: string): Promise<{ job: Partial<Job> }> {
 // User API
 export async function getCurrentUser(): Promise<{ user: User }> {
   return fetchApi('/api/me');
+}
+
+export async function updateCurrentUser(data: { fullName?: string }): Promise<{ user: User }> {
+  return fetchApi('/api/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCurrentUser(): Promise<void> {
+  await fetch('/api/me', { method: 'DELETE' });
 }
 
 // Helper to format relative time
