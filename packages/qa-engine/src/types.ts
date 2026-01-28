@@ -85,3 +85,87 @@ export const NextActionSchema = z.object({
 });
 
 export type NextAction = z.infer<typeof NextActionSchema>;
+
+// QA Event Types for streaming
+
+export type QAEventType =
+  | 'test_started'
+  | 'turn_started'
+  | 'screenshot_taken'
+  | 'bugs_detected'
+  | 'action_planned'
+  | 'action_executed'
+  | 'turn_completed'
+  | 'test_completed'
+  | 'test_error';
+
+export interface BaseQAEvent {
+  type: QAEventType;
+  timestamp: Date;
+  turn: number;
+}
+
+export interface TestStartedEvent extends BaseQAEvent {
+  type: 'test_started';
+  url: string;
+  maxTurns: number;
+}
+
+export interface TurnStartedEvent extends BaseQAEvent {
+  type: 'turn_started';
+}
+
+export interface ScreenshotTakenEvent extends BaseQAEvent {
+  type: 'screenshot_taken';
+  format: 'png';
+  metadata: {
+    size: number;
+  };
+  screenshot: Buffer; // Include full buffer
+}
+
+export interface BugsDetectedEvent extends BaseQAEvent {
+  type: 'bugs_detected';
+  findings: Finding[]; // New findings this turn
+  totalFindings: number; // Cumulative count
+}
+
+export interface ActionPlannedEvent extends BaseQAEvent {
+  type: 'action_planned';
+  action: string;
+  reasoning: string;
+  complete: boolean; // If true, testing is complete
+}
+
+export interface ActionExecutedEvent extends BaseQAEvent {
+  type: 'action_executed';
+  action: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface TurnCompletedEvent extends BaseQAEvent {
+  type: 'turn_completed';
+}
+
+export interface TestCompletedEvent extends BaseQAEvent {
+  type: 'test_completed';
+  result: TestResult;
+}
+
+export interface TestErrorEvent extends BaseQAEvent {
+  type: 'test_error';
+  error: string;
+  partialResult?: Partial<TestResult>;
+}
+
+export type QAEvent =
+  | TestStartedEvent
+  | TurnStartedEvent
+  | ScreenshotTakenEvent
+  | BugsDetectedEvent
+  | ActionPlannedEvent
+  | ActionExecutedEvent
+  | TurnCompletedEvent
+  | TestCompletedEvent
+  | TestErrorEvent;

@@ -6,5 +6,19 @@ export type {
   TestConfig,
   TestResult,
   Finding,
-  ActionLog
+  ActionLog,
+  BugCategory,
+  BugSeverity,
+  // Event types
+  QAEvent,
+  QAEventType,
+  TestStartedEvent,
+  TurnStartedEvent,
+  ScreenshotTakenEvent,
+  BugsDetectedEvent,
+  ActionPlannedEvent,
+  ActionExecutedEvent,
+  TurnCompletedEvent,
+  TestCompletedEvent,
+  TestErrorEvent,
 } from './types';
