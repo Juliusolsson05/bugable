@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, SeverityBadge } from '@/components/status-badge';
 import { cn } from '@/lib/utils';
 import {
@@ -47,6 +48,8 @@ function LiveViewPanel({
   currentTurn: number;
 }) {
   const [selectedIndex, setSelectedIndex] = useState(screenshots.length > 0 ? screenshots.length - 1 : 0);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTallImage, setIsTallImage] = useState(false);
 
   // Auto-update to latest when new screenshots come in
   useEffect(() => {
@@ -59,12 +62,21 @@ function LiveViewPanel({
   const hasPrev = selectedIndex > 0;
   const hasNext = selectedIndex < screenshots.length - 1;
 
+  // Detect if image is very tall (aspect ratio < 0.8 means height is much larger than width)
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const aspectRatio = img.naturalWidth / img.naturalHeight;
+    setIsTallImage(aspectRatio < 0.8);
+  };
+
   return (
     <div className="flex flex-col h-full border-r">
       <div className="px-6 py-3 border-b bg-muted/30 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-medium">Live View</h3>
-          <p className="text-xs text-muted-foreground">What the AI sees</p>
+          <p className="text-xs text-muted-foreground">
+            {currentScreenshot ? 'Click to expand' : 'What the AI sees'}
+          </p>
         </div>
         {screenshots.length > 0 && (
           <div className="flex items-center gap-2">
@@ -88,29 +100,80 @@ function LiveViewPanel({
           </div>
         )}
       </div>
-      <div className="flex-1 min-h-0 flex items-center justify-center p-6 bg-muted/20">
-        <div className="w-full h-full max-h-full bg-card border rounded-lg flex items-center justify-center overflow-hidden">
-          {currentScreenshot ? (
+
+      {/* Screenshot container with fixed aspect ratio */}
+      <div className="flex-1 flex items-center justify-center p-6 bg-muted/20">
+        {currentScreenshot ? (
+          <div
+            className="aspect-[16/10] w-full max-w-xl bg-card border rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={() => setIsExpanded(true)}
+          >
             <img
               src={currentScreenshot.url}
               alt={`Turn ${currentScreenshot.turn} screenshot`}
-              className="max-w-full max-h-full object-contain"
+              onLoad={handleImageLoad}
+              className={cn(
+                "w-full h-full",
+                isTallImage ? "object-cover object-top" : "object-contain"
+              )}
             />
-          ) : status === 'running' ? (
+          </div>
+        ) : status === 'running' ? (
+          <div className="aspect-[16/10] w-full max-w-xl bg-card border rounded-lg flex items-center justify-center">
             <div className="text-center">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
               <p className="text-xs text-muted-foreground">Capturing...</p>
             </div>
-          ) : status === 'completed' ? (
+          </div>
+        ) : status === 'completed' ? (
+          <div className="aspect-[16/10] w-full max-w-xl bg-card border rounded-lg flex items-center justify-center">
             <div className="text-center text-muted-foreground">
               <Eye className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-xs">No screenshot available</p>
             </div>
-          ) : (
+          </div>
+        ) : (
+          <div className="aspect-[16/10] w-full max-w-xl bg-card border rounded-lg flex items-center justify-center">
             <p className="text-xs text-muted-foreground">No preview available</p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
+
+      {/* Fullscreen Dialog */}
+      <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-0 bg-black/95">
+          <DialogTitle className="sr-only">Screenshot Turn {currentScreenshot?.turn}</DialogTitle>
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            {/* Navigation in dialog */}
+            {screenshots.length > 1 && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/50 rounded-full px-4 py-2 z-10">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSelectedIndex(i => i - 1); }}
+                  disabled={!hasPrev}
+                  className="p-1 rounded-full hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <span className="text-sm text-white tabular-nums">
+                  Turn {currentScreenshot?.turn} / {currentTurn || screenshots.length}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setSelectedIndex(i => i + 1); }}
+                  disabled={!hasNext}
+                  className="p-1 rounded-full hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+            <img
+              src={currentScreenshot?.url}
+              alt={`Turn ${currentScreenshot?.turn} screenshot`}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

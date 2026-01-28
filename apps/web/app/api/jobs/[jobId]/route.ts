@@ -52,11 +52,13 @@ export async function GET(
     const testResult = completedEvent?.result as any;
 
     // Get all findings from bugs_detected events
+    let findingIndex = 0;
     const findings = job.events
       ?.filter(e => e.type === 'bugs_detected')
       .flatMap(e => {
         const bugs = (e.findings as any[]) || [];
         return bugs.map(bug => ({
+          id: `finding-${e.turn}-${findingIndex++}`,
           ...bug,
           turn: e.turn,
           timestamp: e.timestamp.toISOString()
