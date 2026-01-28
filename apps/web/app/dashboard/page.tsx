@@ -52,7 +52,7 @@ function JobRow({ job, isLast }: { job: Job; isLast: boolean }) {
     <Link
       href={`/dashboard/jobs/${job.id}`}
       className={cn(
-        "flex items-center gap-4 px-4 py-3 hover:bg-accent/50 transition-colors group",
+        "flex items-center gap-4 px-6 py-3 hover:bg-accent/50 transition-colors group",
         !isLast && "border-b"
       )}
     >
@@ -99,9 +99,9 @@ function PageCard({ page }: { page: Page }) {
     : { critical: 0, warning: 0, info: 0 };
 
   return (
-    <div className="border rounded-lg bg-card overflow-hidden shadow-sm">
+    <div className="bg-card overflow-hidden">
       <div
-        className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent/30 transition-colors"
+        className="flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-accent/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         <ChevronRight className={cn(
@@ -129,7 +129,7 @@ function PageCard({ page }: { page: Page }) {
       {expanded && (
         <div className="border-t bg-background">
           {page.jobs.length === 0 ? (
-            <div className="px-4 py-8 text-center">
+            <div className="px-6 py-8 text-center">
               <p className="text-sm text-muted-foreground mb-2">No analyses yet</p>
               <Button variant="outline" size="sm">
                 <Plus className="h-3 w-3" />
@@ -208,12 +208,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Pages list */}
-      <div className="p-6">
-        <div className="max-w-3xl space-y-3">
-          {mockSite.pages.map((page) => (
-            <PageCard key={page.id} page={page} />
-          ))}
-        </div>
+      <div className="divide-y">
+        {mockSite.pages.map((page) => (
+          <PageCard key={page.id} page={page} />
+        ))}
       </div>
     </div>
   );

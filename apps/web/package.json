@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@bugable/qa-engine": "workspace:*",
+    "@bugable/db": "workspace:*",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",

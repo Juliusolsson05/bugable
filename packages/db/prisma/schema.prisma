@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum JobStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+enum FindingSeverity {
+  critical
+  warning
+  info
+}
+
+enum FindingCategory {
+  ux
+  ui
+  security
+  performance
+  accessibility
+  seo
+}
+
+// ============================================
+// MODELS
+// ============================================
+
+/// User profile - extends Supabase auth.users
+model Profile {
+  id        String   @id @db.Uuid
+  email     String?
+  fullName  String?  @map("full_name")
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  sites Site[]
+
+  @@map("profiles")
+}
+
+/// Website being tested
+model Site {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  baseUrl   String   @map("base_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user  Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pages Page[]
+
+  @@index([userId])
+  @@map("sites")
+}
+
+/// Individual page within a site
+model Page {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId    String   @map("site_id") @db.Uuid
+  path      String
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  site Site  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  jobs Job[]
+
+  @@unique([siteId, path])
+  @@index([siteId])
+  @@map("pages")
+}
+
+/// Test job run on a page
+model Job {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pageId        String    @map("page_id") @db.Uuid
+  status        JobStatus @default(pending)
+  progress      Int       @default(0)
+  currentStep   String?   @map("current_step")
+  screenshotUrl String?   @map("screenshot_url")
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  errorMessage  String?   @map("error_message")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  page          Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  findings      Finding[]
+  reasoningLogs ReasoningLog[]
+
+  @@index([pageId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("jobs")
+}
+
+/// Issue discovered during testing
+model Finding {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId           String          @map("job_id") @db.Uuid
+  severity        FindingSeverity
+  category        FindingCategory
+  title           String
+  description     String
+  elementSelector String?         @map("element_selector")
+  screenshotUrl   String?         @map("screenshot_url")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([severity])
+  @@map("findings")
+}
+
+/// AI reasoning/action log during testing
+model ReasoningLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId           String   @map("job_id") @db.Uuid
+  timestamp       DateTime @default(now())
+  action          String
+  reasoning       String
+  elementSelector String?  @map("element_selector")
+  screenshotUrl   String?  @map("screenshot_url")
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([timestamp])
+  @@map("reasoning_logs")
+}
+
+// ============================================
+// MARKETING / LANDING PAGE (isolated)
+// These tables are for the landing page only.
+// Not tightly integrated with the main app.
+// RLS: INSERT public, SELECT authenticated only
+// ============================================
+
+/// Beta waitlist signups from landing page
+model WaitlistEntry {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  source    String   @default("landing")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@map("waitlist")
+}
+
+/// Contact form submissions from landing page
+model ContactMessage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String?
+  email     String
+  message   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@map("contact_messages")
+}

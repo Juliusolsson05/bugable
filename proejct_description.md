@@ -1,0 +1,3 @@
+ So this is what we are building : Bugable. The inflection point with AI and lovable beging so popular is that the barrier to entry is lower then it has ever been. The result of this is that 100x more websites is being created. this is amazing. BUT the problem is the following. AI can still hallucinate , of 100 websites there is going to be errors. So bugable was born from this inflection point. What bugable does is to UX and UI test the website with AI aswell as checking for security vunrabilities, mapping out user flow, and giving the user refactoring recommendations and code reviews if the user connects github. But the barrier to entry is going to be to only sign up and enter the url for your website.
+
+One of the key points will be the graph flow.

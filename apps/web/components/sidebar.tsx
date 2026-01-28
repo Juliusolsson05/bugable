@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Bug, LayoutGrid, ListTodo, Settings, ChevronRight, LogOut } from 'lucide-react';
+import { LayoutGrid, ListTodo, Settings, ChevronRight, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-provider';
 
@@ -54,7 +55,13 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Bug className="h-5 w-5 text-primary" />
+          <Image
+            src="/logo_bugable.png"
+            alt="Bugable"
+            width={24}
+            height={24}
+            className="h-6 w-6"
+          />
           <span className="text-base font-semibold tracking-tight">Bugable</span>
         </Link>
       </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { prisma } from "@bugable/db";
 
 export const runtime = "nodejs";
 
@@ -29,28 +29,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = supabaseServer();
-
-    const { error } = await supabase.from("contact_messages").insert([
-      {
+    await prisma.contactMessage.create({
+      data: {
         name: name || null,
         email,
         message,
       },
-    ]);
-
-    if (error) {
-      console.error("Contact form error:", error);
-      return NextResponse.json(
-        { ok: false, error: "Failed to send message." },
-        { status: 500 }
-      );
-    }
+    });
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error("Contact form error:", error);
     return NextResponse.json(
-      { ok: false, error: "Something went wrong." },
+      { ok: false, error: "Failed to send message." },
       { status: 500 }
     );
   }

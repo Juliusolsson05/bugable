@@ -33,7 +33,7 @@ function JobRow({ job, page }: { job: Job; page: Page }) {
   return (
     <Link
       href={`/dashboard/jobs/${job.id}`}
-      className="flex items-center gap-4 px-4 py-3 border-b last:border-b-0 hover:bg-accent/50 transition-colors group"
+      className="flex items-center gap-4 px-6 py-3 border-b last:border-b-0 hover:bg-accent/50 transition-colors group"
     >
       <StatusBadge status={job.status} size="sm" />
 
@@ -86,18 +86,16 @@ export default function AllJobsPage() {
       </header>
 
       {/* Jobs list */}
-      <div className="p-6">
-        <div className="max-w-3xl border rounded-lg bg-card overflow-hidden shadow-sm">
-          {allJobs.length === 0 ? (
-            <div className="px-4 py-12 text-center">
-              <p className="text-sm text-muted-foreground">No jobs yet</p>
-            </div>
-          ) : (
-            allJobs.map(({ job, page }) => (
-              <JobRow key={job.id} job={job} page={page} />
-            ))
-          )}
-        </div>
+      <div className="bg-card">
+        {allJobs.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm text-muted-foreground">No jobs yet</p>
+          </div>
+        ) : (
+          allJobs.map(({ job, page }) => (
+            <JobRow key={job.id} job={job} page={page} />
+          ))
+        )}
       </div>
     </div>
   );
