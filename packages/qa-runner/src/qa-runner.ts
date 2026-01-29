@@ -23,6 +23,7 @@ export class QARunner {
       // Initialize browser and navigate
       await this.browser.init();
       await this.browser.navigate(url);
+      await this.browser.enableNavigationPrevention();
 
       // Yield test started event
       yield {
@@ -97,9 +98,9 @@ export class QARunner {
           totalFindings: this.findings.length,
         };
 
-        // 4. Plan next action (pass action history for context)
+        // 4. Plan next action (pass action history and original URL for context)
         const actionHistory = this.actionLog.map(a => a.action);
-        const nextAction = await this.aiClient.planNextAction(screenshot, currentUrl, actionHistory);
+        const nextAction = await this.aiClient.planNextAction(screenshot, currentUrl, actionHistory, url);
 
         // Yield action planned event
         yield {
