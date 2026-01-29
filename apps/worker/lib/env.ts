@@ -20,6 +20,9 @@ export const env = {
   internalSecret: getEnv('BUGABLE_INTERNAL_SECRET'),
   appUrl: getEnv('APP_URL', 'http://localhost:3000'),
 
+  // n8n webhooks (optional)
+  n8nInterventionWebhookUrl: process.env.N8N_INTERVENTION_WEBHOOK_URL || '',
+
   // Runtime detection
   isServerless: !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME,
 };

@@ -23,7 +23,7 @@ export async function GET(
       5000
     );
 
-    // Fetch job with events
+    // Fetch job with events and interventions
     const job = await prisma.job.findFirst({
       where: { id: jobId },
       include: {
@@ -32,6 +32,7 @@ export async function GET(
             site: true,
           },
         },
+        interventions: true,
         ...(includeEvents
           ? {
               events: {
@@ -51,18 +52,40 @@ export async function GET(
     const completedEvent = job.events?.find(e => e.type === 'test_completed');
     const testResult = completedEvent?.result as any;
 
+    // Create a map of interventions by findingRef for quick lookup
+    const interventionMap = new Map(
+      job.interventions?.map(i => [i.findingRef, i]) || []
+    );
+
     // Get all findings from bugs_detected events
-    let findingIndex = 0;
     const findings = job.events
       ?.filter(e => e.type === 'bugs_detected')
       .flatMap(e => {
         const bugs = (e.findings as any[]) || [];
-        return bugs.map(bug => ({
-          id: `finding-${e.turn}-${findingIndex++}`,
-          ...bug,
-          turn: e.turn,
-          timestamp: e.timestamp.toISOString()
-        }));
+        return bugs.map((bug, index) => {
+          // Use per-event index to match worker's findingRef format
+          const findingId = `finding-${e.turn}-${index}`;
+          const intervention = interventionMap.get(findingId);
+          return {
+            id: findingId,
+            ...bug,
+            turn: e.turn,
+            timestamp: e.timestamp.toISOString(),
+            intervention: intervention ? {
+              id: intervention.id,
+              type: intervention.type,
+              status: intervention.status,
+              prompt: intervention.prompt,
+              placeholder: intervention.placeholder,
+              yesLabel: intervention.yesLabel,
+              noLabel: intervention.noLabel,
+              otherLabel: intervention.otherLabel,
+              response: intervention.response,
+              createdAt: intervention.createdAt.toISOString(),
+              respondedAt: intervention.respondedAt?.toISOString() || null,
+            } : null,
+          };
+        });
       }) || [];
 
     // Get turn summaries (combined data from multiple event types)
@@ -131,6 +154,20 @@ export async function GET(
         baseUrl: job.page.site.baseUrl,
       },
       findings,
+      interventions: job.interventions?.map(i => ({
+        id: i.id,
+        findingRef: i.findingRef,
+        type: i.type,
+        status: i.status,
+        prompt: i.prompt,
+        placeholder: i.placeholder,
+        yesLabel: i.yesLabel,
+        noLabel: i.noLabel,
+        otherLabel: i.otherLabel,
+        response: i.response,
+        createdAt: i.createdAt.toISOString(),
+        respondedAt: i.respondedAt?.toISOString() || null,
+      })) || [],
       screenshots,
       currentTurn,
       turns,

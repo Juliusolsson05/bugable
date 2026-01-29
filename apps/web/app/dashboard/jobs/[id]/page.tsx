@@ -3,7 +3,7 @@
 import React, { use, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Square, Shield, MousePointer, Palette, Eye, RefreshCw, ChevronRight, ChevronLeft, LayoutGrid, List, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { StatusBadge, SeverityBadge } from '@/components/status-badge';
@@ -14,12 +14,14 @@ import {
   cancelJob,
   formatRelativeTime,
   type Finding,
+  type Intervention,
   type Job,
   type Page,
   type JobStatus,
   type Severity,
   type Category,
 } from '@/lib/api';
+import { InterventionPrompt } from '@/components/intervention-prompt';
 import type { JobEvent } from '@bugable/db';
 
 function ProgressBar({ progress }: { progress: number }) {
@@ -257,7 +259,13 @@ const categoryIcons: Partial<Record<Category, React.ReactNode>> = {
   contrast: <Eye className="h-4 w-4" />,
 };
 
-function FindingCard({ finding }: { finding: Finding }) {
+function FindingCard({
+  finding,
+  onInterventionResponded
+}: {
+  finding: Finding;
+  onInterventionResponded?: (intervention: Intervention) => void;
+}) {
   const borderColor = {
     critical: 'border-l-destructive',
     high: 'border-l-warning',
@@ -290,6 +298,14 @@ function FindingCard({ finding }: { finding: Finding }) {
                 </code>
               </div>
             )}
+
+            {/* Intervention prompt */}
+            {finding.intervention && (
+              <InterventionPrompt
+                intervention={finding.intervention}
+                onResponded={onInterventionResponded}
+              />
+            )}
           </div>
         </div>
         {finding.recommendation && (
@@ -314,7 +330,15 @@ const severityColumns: { key: Severity; label: string; color: string; bgColor: s
   { key: 'critical', label: 'Critical', color: 'bg-destructive', bgColor: 'bg-destructive/10' },
 ];
 
-function FindingsSection({ findings, status }: { findings: Finding[]; status: JobStatus }) {
+function FindingsSection({
+  findings,
+  status,
+  onInterventionResponded
+}: {
+  findings: Finding[];
+  status: JobStatus;
+  onInterventionResponded?: (intervention: Intervention) => void;
+}) {
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
 
   const counts = findings.reduce(
@@ -438,7 +462,10 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
                   {findingsBySeverity[col.key].map((finding) => (
                     <div
                       key={finding.id}
-                      className="bg-card border rounded-md p-3 text-sm"
+                      className={cn(
+                        "bg-card border rounded-md p-3 text-sm",
+                        finding.intervention?.status === 'pending' && "ring-2 ring-primary/30"
+                      )}
                     >
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-muted-foreground">
@@ -447,6 +474,12 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                           {finding.category}
                         </span>
+                        {finding.intervention?.status === 'pending' && (
+                          <span className="ml-auto flex items-center gap-1 text-[10px] text-primary font-medium">
+                            <MessageCircle className="h-3 w-3" />
+                            Input needed
+                          </span>
+                        )}
                       </div>
                       <h4 className="font-medium text-xs leading-snug">{finding.title}</h4>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -461,7 +494,11 @@ function FindingsSection({ findings, status }: { findings: Finding[]; status: Jo
         ) : (
           <div className="space-y-3 max-w-2xl">
             {findings.map((finding) => (
-              <FindingCard key={finding.id} finding={finding} />
+              <FindingCard
+                key={finding.id}
+                finding={finding}
+                onInterventionResponded={onInterventionResponded}
+              />
             ))}
           </div>
         )}
@@ -636,7 +673,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         )}
 
         {/* Findings */}
-        <FindingsSection findings={findings} status={job.status} />
+        <FindingsSection
+          findings={findings}
+          status={job.status}
+          onInterventionResponded={() => fetchJob()}
+        />
       </div>
     </div>
   );

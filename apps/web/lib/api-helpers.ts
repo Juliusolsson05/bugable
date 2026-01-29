@@ -116,16 +116,33 @@ export function validateInternalRequest(request: Request): boolean {
   return secret === expectedSecret;
 }
 
+export type NormalizedSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export function normalizeSeverity(input: unknown): NormalizedSeverity | null {
+  if (typeof input !== 'string') return null;
+  const severity = input.toLowerCase().trim();
+
+  if (severity === 'critical' || severity === 'high' || severity === 'medium' || severity === 'low') {
+    return severity;
+  }
+
+  if (severity === 'warning' || severity === 'warn' || severity === 'major') return 'high';
+  if (severity === 'info' || severity === 'minor') return 'low';
+  if (severity === 'blocker') return 'critical';
+
+  return null;
+}
+
 // Count findings by severity for a job
-export function countFindingsBySeverity(findings: { severity: string }[]) {
+export function countFindingsBySeverity(findings: { severity: unknown }[]) {
   return findings.reduce(
     (acc, f) => {
-      if (f.severity === 'critical') acc.critical++;
-      else if (f.severity === 'warning') acc.warning++;
-      else if (f.severity === 'info') acc.info++;
+      const normalized = normalizeSeverity(f.severity);
+      if (!normalized) return acc;
+      acc[normalized] += 1;
       return acc;
     },
-    { critical: 0, warning: 0, info: 0 }
+    { critical: 0, high: 0, medium: 0, low: 0 }
   );
 }
 

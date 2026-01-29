@@ -2,6 +2,8 @@
 
 export type JobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
+export type InterventionType = 'text_input' | 'yes_no_other';
+export type InterventionStatus = 'pending' | 'responded' | 'skipped';
 export type Category =
   | 'error'              // Console errors, crashes, 404s
   | 'layout_broken'      // Overlapping content, broken layouts
@@ -57,17 +59,35 @@ export interface Job {
   updatedAt: string;
 }
 
+export interface Intervention {
+  id: string;
+  findingRef: string;
+  type: InterventionType;
+  status: InterventionStatus;
+  prompt: string;
+  placeholder: string | null;
+  yesLabel: string | null;
+  noLabel: string | null;
+  otherLabel: string | null;
+  response: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
 export interface Finding {
   id: string;
-  jobId: string;
+  jobId?: string;
   severity: Severity;
   category: Category;
-  title: string;
+  title?: string;
   description: string;
   location: string | null;
   recommendation: string | null;
   screenshotUrl: string | null;
-  createdAt: string;
+  createdAt?: string;
+  turn?: number;
+  timestamp?: string;
+  intervention?: Intervention | null;
 }
 
 export interface ReasoningLog {
@@ -106,6 +126,7 @@ export interface ApiError {
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -229,9 +250,7 @@ export async function getJobs(options?: {
 export async function getJob(
   jobId: string,
   options?: {
-    includeFindings?: boolean;
     includeEvents?: boolean;
-    findingsLimit?: number;
     eventsLimit?: number;
   }
 ): Promise<{
@@ -239,15 +258,14 @@ export async function getJob(
   page: Page;
   site: { id: string; name: string; baseUrl: string };
   findings?: Finding[];
+  interventions?: Intervention[];
   events?: any[];
   screenshots?: Array<{ url: string; turn: number }>;
   currentTurn?: number;
   turns?: any[];
 }> {
   const params = new URLSearchParams();
-  if (options?.includeFindings === false) params.set('includeFindings', 'false');
   if (options?.includeEvents === false) params.set('includeEvents', 'false');
-  if (options?.findingsLimit) params.set('findingsLimit', options.findingsLimit.toString());
   if (options?.eventsLimit) params.set('eventsLimit', options.eventsLimit.toString());
 
   const query = params.toString();
@@ -262,6 +280,21 @@ export async function rerunJob(
 
 export async function cancelJob(jobId: string): Promise<{ job: Partial<Job> }> {
   return fetchApi(`/api/jobs/${jobId}/cancel`, { method: 'POST' });
+}
+
+// Interventions API
+export async function respondToIntervention(
+  interventionId: string,
+  data: { response?: string; skip?: boolean }
+): Promise<{ intervention: Intervention }> {
+  return fetchApi(`/api/interventions/${interventionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getIntervention(interventionId: string): Promise<{ intervention: Intervention }> {
+  return fetchApi(`/api/interventions/${interventionId}`);
 }
 
 // User API

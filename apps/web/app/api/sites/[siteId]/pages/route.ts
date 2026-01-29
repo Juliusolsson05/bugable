@@ -6,7 +6,6 @@ import {
   errorResponse,
   buildFullUrl,
   normalizePath,
-  countFindingsBySeverity,
 } from '@/lib/api-helpers';
 
 // GET /api/sites/:siteId/pages - List pages with optional latestJob and stats
@@ -44,14 +43,18 @@ export async function GET(
               jobs: {
                 orderBy: { createdAt: 'desc' },
                 take: 1,
-                include: includeStats
-                  ? {
-                      events: {
-                        where: { type: 'bugs_detected' },
-                        select: { findings: true },
-                      },
-                    }
-                  : undefined,
+                select: {
+                  id: true,
+                  status: true,
+                  progress: true,
+                  currentStep: true,
+                  createdAt: true,
+                  completedAt: true,
+                  findingsCritical: true,
+                  findingsHigh: true,
+                  findingsMedium: true,
+                  findingsLow: true,
+                },
               },
             }
           : undefined,
@@ -76,19 +79,15 @@ export async function GET(
         currentStep: string | null;
         createdAt: Date;
         completedAt: Date | null;
-        events?: Array<{ findings: any }>;
+        findingsCritical: number | null;
+        findingsHigh: number | null;
+        findingsMedium: number | null;
+        findingsLow: number | null;
       }>;
     };
 
     const transformedPages = (pages as PageWithJobs[]).map((page) => {
       const latestJob = page.jobs?.[0];
-      // Extract all findings from bugs_detected events
-      const allFindings = latestJob?.events?.flatMap(event =>
-        (event.findings as any[]) || []
-      ) || [];
-      const counts = allFindings.length > 0
-        ? countFindingsBySeverity(allFindings)
-        : null;
 
       return {
         id: page.id,
@@ -107,7 +106,16 @@ export async function GET(
                 currentStep: latestJob.currentStep,
                 createdAt: latestJob.createdAt.toISOString(),
                 completedAt: latestJob.completedAt?.toISOString() || null,
-                ...(includeStats && counts ? { counts } : {}),
+                ...(includeStats
+                  ? {
+                      counts: {
+                        critical: latestJob.findingsCritical ?? 0,
+                        high: latestJob.findingsHigh ?? 0,
+                        medium: latestJob.findingsMedium ?? 0,
+                        low: latestJob.findingsLow ?? 0,
+                      },
+                    }
+                  : {}),
               },
             }
           : {}),

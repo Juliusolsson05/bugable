@@ -30,6 +30,17 @@ enum JobEventType {
   test_error
 }
 
+enum InterventionType {
+  text_input      // Free text response with placeholder
+  yes_no_other    // Three button choices
+}
+
+enum InterventionStatus {
+  pending         // Awaiting user response
+  responded       // User has responded
+  skipped         // User dismissed/skipped
+}
+
 // ============================================
 // MODELS
 // ============================================
@@ -113,13 +124,47 @@ model Job {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  page   Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  events JobEvent[]
+  page          Page          @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  events        JobEvent[]
+  interventions Intervention[]
 
   @@index([pageId])
   @@index([status])
   @@index([createdAt(sort: Desc)])
   @@map("jobs")
+}
+
+/// User intervention request for a finding
+model Intervention {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId           String             @map("job_id") @db.Uuid
+  findingRef      String             @map("finding_ref")  // e.g., "finding-1-0" (turn 1, index 0)
+  type            InterventionType
+  status          InterventionStatus @default(pending)
+
+  // The question/prompt shown to user
+  prompt          String             // "Enter the real phone number"
+
+  // For text_input: placeholder hint
+  placeholder     String?
+
+  // For yes_no_other: button labels
+  yesLabel        String?            @map("yes_label")
+  noLabel         String?            @map("no_label")
+  otherLabel      String?            @map("other_label")
+
+  // User's response
+  response        String?            // The text response or selected option
+
+  createdAt       DateTime           @default(now()) @map("created_at")
+  respondedAt     DateTime?          @map("responded_at")
+
+  job             Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, findingRef])
+  @@index([jobId])
+  @@index([status])
+  @@map("interventions")
 }
 
 /// Event sourcing model - captures all QA runner events

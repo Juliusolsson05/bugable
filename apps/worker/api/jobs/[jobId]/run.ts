@@ -258,6 +258,113 @@ async function handleQAEvent(
           findingsLow: { increment: counts.low },
         }
       });
+
+      // Call n8n to generate interventions for each finding
+      const interventionWebhookUrl = env.n8nInterventionWebhookUrl;
+      if (interventionWebhookUrl) {
+        let findingIndex = 0;
+        for (const finding of event.findings) {
+          const findingRef = `finding-${event.turn}-${findingIndex++}`;
+          try {
+            // Build prompt from finding
+            const prompt = `${finding.description}${finding.location ? ` Location: ${finding.location}` : ''}`;
+
+            // Call n8n intervention webhook
+            const payload: { prompt: string; image?: string } = { prompt };
+
+            // Include screenshot if available (as base64)
+            if (state.currentScreenshotUrl) {
+              // Fetch the screenshot and convert to base64
+              try {
+                const screenshotResponse = await fetch(state.currentScreenshotUrl);
+                if (screenshotResponse.ok) {
+                  const buffer = await screenshotResponse.arrayBuffer();
+                  payload.image = Buffer.from(buffer).toString('base64');
+                }
+              } catch (screenshotErr) {
+                console.warn(`Failed to fetch screenshot for intervention: ${screenshotErr}`);
+              }
+            }
+
+            console.log(`Calling n8n intervention webhook for ${findingRef}...`);
+            const n8nResponse = await fetch(interventionWebhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+
+            if (n8nResponse.ok) {
+              const n8nData = await n8nResponse.json();
+              console.log(`n8n response for ${findingRef}:`, JSON.stringify(n8nData, null, 2));
+
+              // Parse the response - handle multiple formats
+              let interventionData;
+
+              // Format 1: { response: "<json string>" }
+              if (typeof n8nData.response === 'string') {
+                try {
+                  interventionData = JSON.parse(n8nData.response);
+                } catch {
+                  const match = n8nData.response.match(/\{[^{}]*\}/);
+                  if (match) interventionData = JSON.parse(match[0]);
+                }
+              }
+              // Format 2: Direct object with solution_type
+              else if (n8nData.solution_type) {
+                interventionData = n8nData;
+              }
+              // Format 3: Array with first item
+              else if (Array.isArray(n8nData) && n8nData[0]?.solution_type) {
+                interventionData = n8nData[0];
+              }
+              // Format 4: Nested in output/data
+              else if (n8nData.output?.solution_type) {
+                interventionData = n8nData.output;
+              } else if (n8nData.data?.solution_type) {
+                interventionData = n8nData.data;
+              }
+
+              console.log(`Parsed intervention data for ${findingRef}:`, interventionData);
+
+              if (interventionData && interventionData.solution_type) {
+                // Map n8n response to our intervention model
+                const type = interventionData.solution_type === 'text_input' ? 'text_input' : 'yes_no_other';
+
+                await prisma.intervention.upsert({
+                  where: {
+                    jobId_findingRef: { jobId, findingRef }
+                  },
+                  create: {
+                    jobId,
+                    findingRef,
+                    type,
+                    prompt: interventionData.prompt || 'Please provide additional information',
+                    placeholder: interventionData.placeholder,
+                    yesLabel: interventionData.yes_label,
+                    noLabel: interventionData.no_label,
+                    otherLabel: interventionData.other_label,
+                  },
+                  update: {
+                    type,
+                    prompt: interventionData.prompt || 'Please provide additional information',
+                    placeholder: interventionData.placeholder,
+                    yesLabel: interventionData.yes_label,
+                    noLabel: interventionData.no_label,
+                    otherLabel: interventionData.other_label,
+                  }
+                });
+                console.log(`Created intervention for ${findingRef}: ${type}`);
+              } else {
+                console.warn(`No valid intervention data found for ${findingRef} - missing solution_type`);
+              }
+            } else {
+              console.warn(`n8n webhook returned ${n8nResponse.status} for ${findingRef}`);
+            }
+          } catch (interventionErr) {
+            console.error(`Failed to create intervention for ${findingRef}:`, interventionErr);
+          }
+        }
+      }
       break;
 
     case 'action_planned':

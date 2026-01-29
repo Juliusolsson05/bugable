@@ -37,10 +37,15 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { fullName } = body;
 
-    // Update profile
-    const profile = await prisma.profile.update({
+    // Update profile (create if missing)
+    const profile = await prisma.profile.upsert({
       where: { id: user!.id },
-      data: {
+      create: {
+        id: user!.id,
+        fullName: fullName ?? null,
+        avatarUrl: null,
+      },
+      update: {
         ...(fullName !== undefined && { fullName }),
         updatedAt: new Date(),
       },
@@ -72,8 +77,8 @@ export async function DELETE() {
       where: { userId: user!.id },
     });
 
-    // Delete the profile
-    await prisma.profile.delete({
+    // Delete the profile (if it exists)
+    await prisma.profile.deleteMany({
       where: { id: user!.id },
     });
 

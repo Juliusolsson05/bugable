@@ -1,0 +1,15 @@
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Migrations (schema.prisma is enough)
+**/migrations/
+
+# Test files
+test.ts
+*.test.ts
+*.spec.ts
+
+# Config files that are boilerplate
+tsconfig.json
