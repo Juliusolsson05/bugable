@@ -22,6 +22,7 @@ export const env = {
 
   // n8n webhooks (optional)
   n8nInterventionWebhookUrl: process.env.N8N_INTERVENTION_WEBHOOK_URL || '',
+  n8nApiKey: process.env.N8N_API_KEY || '',
 
   // Runtime detection
   isServerless: !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME,

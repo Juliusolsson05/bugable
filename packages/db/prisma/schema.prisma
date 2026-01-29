@@ -124,9 +124,10 @@ model Job {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  page          Page          @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  events        JobEvent[]
-  interventions Intervention[]
+  page             Page              @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  events           JobEvent[]
+  interventions    Intervention[]
+  resolvedFindings ResolvedFinding[]
 
   @@index([pageId])
   @@index([status])
@@ -165,6 +166,21 @@ model Intervention {
   @@index([jobId])
   @@index([status])
   @@map("interventions")
+}
+
+/// Tracks which findings have been marked as resolved by user
+model ResolvedFinding {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId      String   @map("job_id") @db.Uuid
+  findingRef String   @map("finding_ref")  // "finding-{turn}-{index}"
+  resolvedAt DateTime @default(now()) @map("resolved_at")
+  resolvedBy String?  @map("resolved_by") @db.Uuid  // user id who resolved
+
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, findingRef])
+  @@index([jobId])
+  @@map("resolved_findings")
 }
 
 /// Event sourcing model - captures all QA runner events

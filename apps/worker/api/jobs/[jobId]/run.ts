@@ -289,7 +289,10 @@ async function handleQAEvent(
             console.log(`Calling n8n intervention webhook for ${findingRef}...`);
             const n8nResponse = await fetch(interventionWebhookUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(env.n8nApiKey ? { 'X-N8N-API-KEY': env.n8nApiKey } : {}),
+              },
               body: JSON.stringify(payload),
             });
 

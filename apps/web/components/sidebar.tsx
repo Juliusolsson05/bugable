@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutGrid, ListTodo, Settings, ChevronDown, LogOut, Plus, Check } from 'lucide-react';
+import { LayoutGrid, ListTodo, Bug, Settings, ChevronDown, LogOut, Plus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-provider';
 import { useSite, type Site } from '@/components/site-provider';
@@ -25,6 +25,11 @@ const navItems: NavItem[] = [
     label: 'All Jobs',
     href: '/dashboard/jobs',
     icon: <ListTodo className="h-4 w-4" />,
+  },
+  {
+    label: 'Findings',
+    href: '/dashboard/findings',
+    icon: <Bug className="h-4 w-4" />,
   },
   {
     label: 'Settings',

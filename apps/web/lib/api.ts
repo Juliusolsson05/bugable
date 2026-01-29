@@ -90,6 +90,28 @@ export interface Finding {
   intervention?: Intervention | null;
 }
 
+// Global finding from /api/findings (includes page/site context and resolved status)
+export interface GlobalFinding {
+  id: string; // format: {jobId}-finding-{turn}-{index}
+  findingRef: string; // format: finding-{turn}-{index}
+  jobId: string;
+  pageId: string;
+  siteId: string;
+  pagePath: string;
+  pageTitle: string | null;
+  siteBaseUrl: string;
+  siteName: string;
+  severity: Severity;
+  category: Category;
+  description: string;
+  location: string | null;
+  turn: number;
+  detectedAt: string;
+  resolved: boolean;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+
 export interface ReasoningLog {
   id: string;
   jobId: string;
@@ -295,6 +317,29 @@ export async function respondToIntervention(
 
 export async function getIntervention(interventionId: string): Promise<{ intervention: Intervention }> {
   return fetchApi(`/api/interventions/${interventionId}`);
+}
+
+// Findings API (Global)
+export async function getFindings(options?: { siteId?: string }): Promise<{ findings: GlobalFinding[] }> {
+  const params = new URLSearchParams();
+  if (options?.siteId) params.set('siteId', options.siteId);
+  const query = params.toString();
+  return fetchApi(`/api/findings${query ? `?${query}` : ''}`);
+}
+
+export async function resolveFinding(
+  findingId: string,
+  resolved: boolean = true
+): Promise<{
+  id: string;
+  resolved: boolean;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}> {
+  return fetchApi(`/api/findings/${findingId}/resolve`, {
+    method: 'PATCH',
+    body: JSON.stringify({ resolved }),
+  });
 }
 
 // User API
