@@ -98,9 +98,9 @@ export class QARunner {
           totalFindings: this.findings.length,
         };
 
-        // 4. Plan next action (pass action history and original URL for context)
+        // 4. Plan next action (pass action history for context)
         const actionHistory = this.actionLog.map(a => a.action);
-        const nextAction = await this.aiClient.planNextAction(screenshot, currentUrl, actionHistory, url);
+        const nextAction = await this.aiClient.planNextAction(screenshot, currentUrl, actionHistory);
 
         // Yield action planned event
         yield {

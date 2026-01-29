@@ -16,8 +16,7 @@ export type BugCategory =
   | 'visual_overflow'    // Content extending beyond containers
   | 'responsive_break'   // Mobile/tablet layout issues
   | 'typography'         // Text truncation, readability
-  | 'interactive_fail'   // Buttons, links not working
-  | 'contrast';          // Low contrast issues
+  | 'interactive_fail';  // Buttons, links not working
 
 // Bug severity levels
 export type BugSeverity = 'critical' | 'high' | 'medium' | 'low';
@@ -67,8 +66,7 @@ export const BugCheckSchema = z.object({
       'visual_overflow',
       'responsive_break',
       'typography',
-      'interactive_fail',
-      'contrast'
+      'interactive_fail'
     ]),
     severity: z.enum(['critical', 'high', 'medium', 'low']),
     location: z.string().max(200) // Where the bug appears (e.g., "navbar", "hero section")

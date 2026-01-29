@@ -2,7 +2,6 @@ import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { BugCheckSchema, NextActionSchema, type BugCheck, type NextAction, type Finding } from './types';
 import { SYSTEM_PROMPT } from './prompts';
-import { normalizeUrlForComparison } from './browser';
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
@@ -56,16 +55,11 @@ export class AIClient {
     return bugCheck;
   }
 
-  async planNextAction(screenshot: Buffer, url: string, actionHistory: string[] = [], originalUrl?: string): Promise<NextAction> {
+  async planNextAction(screenshot: Buffer, url: string, actionHistory: string[] = []): Promise<NextAction> {
     // Build action history summary to avoid repeating actions
     const historySummary = actionHistory.length > 0
       ? `\n\nACTIONS ALREADY TAKEN:\n${actionHistory.slice(-10).map((a, i) => `${i + 1}. ${a}`).join('\n')}`
       : '';
-
-    // Add warning if URL has changed (normalize both URLs to ignore hash fragments)
-    const urlWarning = originalUrl && normalizeUrlForComparison(url) !== normalizeUrlForComparison(originalUrl)
-      ? `\n\n⚠️ WARNING: You have navigated away from the original test page!\nOriginal URL: ${originalUrl}\nCurrent URL: ${url}\nYour NEXT action MUST be to navigate back to: ${originalUrl}`
-      : (originalUrl ? `\n\nORIGINAL TEST PAGE: ${originalUrl}\nYou must stay on this page. Do not navigate elsewhere.` : '');
 
     // Build fresh messages for this request (don't accumulate old screenshots)
     const messages: Message[] = [
@@ -75,7 +69,7 @@ export class AIClient {
         content: [
           {
             type: 'text',
-            text: `PLAN NEXT ACTION:\nCurrent URL: ${url}${urlWarning}${historySummary}\n\nWhat should I do next?`
+            text: `PLAN NEXT ACTION:\nCurrent URL: ${url}${historySummary}\n\nWhat should I do next?`
           },
           {
             type: 'image_url',

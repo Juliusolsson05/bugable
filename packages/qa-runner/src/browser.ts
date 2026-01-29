@@ -20,7 +20,14 @@ export interface BrowserConfig {
  */
 export function normalizeUrlForComparison(url: string): string {
   const urlObj = new URL(url);
-  return urlObj.origin + urlObj.pathname + urlObj.search;
+  let pathname = urlObj.pathname;
+
+  // Remove trailing slash (except for root path "/")
+  if (pathname !== "/" && pathname.endsWith("/")) {
+    pathname = pathname.slice(0, -1);
+  }
+
+  return urlObj.origin + pathname + urlObj.search;
 }
 
 export class Browser {
