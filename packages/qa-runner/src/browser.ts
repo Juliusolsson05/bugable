@@ -10,6 +10,19 @@ export interface BrowserConfig {
   };
 }
 
+/**
+ * Normalize a URL for comparison purposes by removing hash fragments.
+ * This allows hash-only navigation (like #section links) while still detecting
+ * actual page navigations.
+ *
+ * @param url - The URL to normalize
+ * @returns The normalized URL (origin + pathname + search, without hash)
+ */
+export function normalizeUrlForComparison(url: string): string {
+  const urlObj = new URL(url);
+  return urlObj.origin + urlObj.pathname + urlObj.search;
+}
+
 export class Browser {
   private stagehand: Stagehand | null = null;
   private originalUrl: string | null = null;

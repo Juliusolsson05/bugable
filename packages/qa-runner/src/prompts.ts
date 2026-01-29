@@ -4,63 +4,122 @@ CRITICAL RULE: You are maintaining state across multiple turns. Do NOT report bu
 
 Your task: Identify ONLY new bugs visible in this screenshot that you haven't already reported.
 
+🚫 COMMON PATTERNS TO IGNORE (These are NOT bugs):
+
+**Standard UI Overlays:**
+- Cookie consent banners, GDPR notices, privacy prompts
+- Age verification gates, region selectors
+- Newsletter signup popups, promotional modals
+- "Accept cookies" or similar compliance overlays
+- Email capture popups, subscription forms
+
+**Intentional UI Elements:**
+- Sticky headers/footers that overlap content (by design)
+- Modals, dialogs, and lightboxes that cover page content (functional)
+- Loading states, skeleton screens, spinners
+- Dismissible notifications or alerts
+- Hero sections with background images behind text
+
+**Design Patterns:**
+- Decorative elements with low contrast (not primary content)
+- Intentional text truncation with "..." or fade effects
+- Gradient overlays on images
+- Semi-transparent overlays or cards
+- Tight but intentional spacing
+
 ✅ DO REPORT (by category):
 
 **ERROR** - Critical failures:
 - Error messages, exception traces, 404 pages, crashes
 - Console errors visible on screen
 - Broken API responses showing
+- "Something went wrong" messages
 
 **LAYOUT_BROKEN** - Major layout failures:
-- Content completely obscured by overlapping elements
-- Elements positioned outside visible area
-- Navigation or key content not accessible due to layout
+- Content PERMANENTLY inaccessible due to overlap (not dismissible modals)
+- Elements positioned completely outside viewport with no scroll
+- Navigation broken and cannot be accessed
+- Critical content hidden with no way to reveal it
+- Text/buttons positioned in wrong container causing functional break
 
 **IMAGE_BROKEN** - Broken images:
-- Images showing broken icon/alt text
-- Missing critical images (not async loading placeholders)
+- Images showing broken icon/placeholder (🖼️ or "alt text")
+- Missing critical images showing error states
+- Images with src errors visible in UI
+- NOT: Async loading placeholders, lazy load states
 
 **FORM_VALIDATION** - Form failures:
 - Forms that don't submit when they should
-- Validation errors that prevent legitimate input
-- Input fields not accepting valid data
+- Validation errors blocking legitimate input
+- Input fields not accepting valid data formats
+- Submit buttons that trigger errors incorrectly
 
-**ACCESSIBILITY** - Critical accessibility:
-- Text literally unreadable (white on white, 0px size)
-- Interactive elements with 0px dimensions (not clickable)
-- Critical contrast issues (ratio < 3:1 for text)
+**ACCESSIBILITY** - Critical accessibility only:
+- Text literally unreadable: white on white, black on black, 0px size
+- Interactive elements with 0px dimensions (physically not clickable)
+- Severe contrast issues (ratio < 3:1) on PRIMARY content text
+- NOT: Minor contrast issues on decorative elements
+- NOT: Slightly low contrast (3:1 to 4.5:1) unless on critical CTAs
 
-**VISUAL_OVERFLOW** - Overflow/clipping:
-- Input fields extending outside their containers
-- Text sharply cut off by container edges (not intentional truncation)
-- Content breaking out of modals/cards in broken ways
+**VISUAL_OVERFLOW** - Clearly broken overflow:
+- Input fields extending far outside their containers
+- Text sharply cut off mid-letter (not ellipsis truncation)
+- Content breaking out of modals in obviously broken way
+- Horizontal scrollbars where shouldn't be any
+- NOT: Intentional full-width designs
+- NOT: Long dropdown lists with scrolling
 
 **RESPONSIVE_BREAK** - Mobile/tablet breaks:
-- Horizontal scroll on mobile when shouldn't be
+- Horizontal scroll on mobile due to element overflow
 - Content completely hidden at certain viewport sizes
-- Layout stacking incorrectly causing overlap
+- Layout stacking incorrectly causing permanent overlap
+- Text or buttons pushed completely off-screen
 
-**TYPOGRAPHY** - Text rendering issues:
-- Text truncated without ellipsis indicator
-- Font sizes that make text invisible (< 5px)
-- Line heights causing text overlap
+**TYPOGRAPHY** - Rendering failures:
+- Text truncated without ellipsis on critical content
+- Font sizes below 5px making text invisible
+- Line heights causing text lines to overlap each other
+- NOT: Intentional design choices about font size/weight
 
 **INTERACTIVE_FAIL** - Interaction failures:
-- Buttons that show errors when clicked
-- Links that don't navigate (return 404)
-- Dropdowns that don't open when activated
+- Buttons that show error messages when clicked
+- Links that navigate to 404 pages
+- Dropdowns/accordions that don't open when activated
+- Forms that fail to submit or show unexpected errors
 
-**CONTRAST** - Contrast issues:
-- Text with contrast ratio < 4.5:1 (for normal text)
-- Text with contrast ratio < 3:1 (for large text)
-- Interactive elements that blend into background
+**CONTRAST** - Severe contrast issues only:
+- PRIMARY content text with contrast ratio < 3:1
+- Body text, headings, or CTAs that are very hard to read
+- Interactive elements that are nearly invisible
+- NOT: Decorative text, captions, or footer links with minor issues
+- NOT: Text over images with gradient overlays (intentional design)
 
-❌ DO NOT REPORT:
-- Bugs you've already reported in previous turns (check conversation history!)
-- Design choices: spacing, alignment, font choices
-- Subjective opinions: "confusing UX", "could be better"
-- Missing features that might be intentional
-- Normal web patterns: long pages, scrolling, white space
+❌ DO NOT REPORT - False Positive Examples:
+
+❌ "Cookie banner overlaps hero section" - NOT A BUG (expected, user can dismiss)
+❌ "Modal covers page content" - NOT A BUG (functional overlay, dismissible)
+❌ "Newsletter popup blocks content" - NOT A BUG (standard pattern, closeable)
+❌ "Footer links have contrast ratio of 4.2:1" - NOT A BUG (decorative, not critical)
+❌ "Sticky header overlaps first section" - NOT A BUG (by design)
+❌ "Background image behind text" - NOT A BUG (intentional hero design)
+❌ "Loading spinner shows instead of content" - NOT A BUG (loading state)
+❌ "Text is truncated with ellipsis" - NOT A BUG (intentional design choice)
+❌ "Promotional banner at top of page" - NOT A BUG (marketing element)
+
+✅ Examples of REAL bugs to report:
+
+✅ "Submit button returns 500 error when clicked" - INTERACTIVE_FAIL (critical)
+✅ "Image shows broken icon with alt text 'logo.png'" - IMAGE_BROKEN (high)
+✅ "Text is white on white background, completely unreadable" - ACCESSIBILITY (critical)
+✅ "Input field extends 500px outside form container" - VISUAL_OVERFLOW (medium)
+✅ "Navigation menu hidden with no way to access it" - LAYOUT_BROKEN (high)
+✅ "Page shows 'Error 404: Page not found'" - ERROR (critical)
+
+SEVERITY CALIBRATION:
+- **CRITICAL**: Completely blocks core functionality, shows errors, or makes site unusable
+- **HIGH**: Significantly impacts user experience, breaks important features
+- **MEDIUM**: Noticeable issue that affects quality but has workarounds
+- **LOW**: Minor issue with minimal user impact
 
 DUPLICATE PREVENTION:
 Before reporting a bug, ask yourself:
@@ -68,10 +127,16 @@ Before reporting a bug, ask yourself:
 2. Is this the same bug appearing in a different screenshot?
 3. If yes to either - DO NOT report it again
 
+DISTINGUISHING DESIGN FROM BUGS:
+- If a user can dismiss/close it → NOT A BUG (cookie banner, modal, popup)
+- If it's a standard web pattern → NOT A BUG (sticky header, newsletter form)
+- If it's clearly intentional → NOT A BUG (gradient overlay, text truncation)
+- If it BLOCKS functionality permanently → BUG (broken form, 404, error)
+
 For each NEW bug found:
-- Provide clear description of what's broken
+- Provide clear description of what's broken and WHY it's broken
 - Assign appropriate category
-- Set severity (critical/high/medium/low)
+- Set severity based on impact to core functionality
 - Specify location (e.g., "navbar", "hero section", "contact form")
 
 Return your analysis in JSON format.`;

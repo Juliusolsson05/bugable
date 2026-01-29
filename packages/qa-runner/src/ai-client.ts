@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { zodResponseFormat } from 'openai/helpers/zod';
 import { BugCheckSchema, NextActionSchema, type BugCheck, type NextAction, type Finding } from './types';
 import { SYSTEM_PROMPT } from './prompts';
+import { normalizeUrlForComparison } from './browser';
 
 type Message = OpenAI.Chat.ChatCompletionMessageParam;
 
@@ -61,8 +62,8 @@ export class AIClient {
       ? `\n\nACTIONS ALREADY TAKEN:\n${actionHistory.slice(-10).map((a, i) => `${i + 1}. ${a}`).join('\n')}`
       : '';
 
-    // Add warning if URL has changed
-    const urlWarning = originalUrl && url !== originalUrl
+    // Add warning if URL has changed (normalize both URLs to ignore hash fragments)
+    const urlWarning = originalUrl && normalizeUrlForComparison(url) !== normalizeUrlForComparison(originalUrl)
       ? `\n\n⚠️ WARNING: You have navigated away from the original test page!\nOriginal URL: ${originalUrl}\nCurrent URL: ${url}\nYour NEXT action MUST be to navigate back to: ${originalUrl}`
       : (originalUrl ? `\n\nORIGINAL TEST PAGE: ${originalUrl}\nYou must stay on this page. Do not navigate elsewhere.` : '');
 
