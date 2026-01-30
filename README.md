@@ -1,6 +1,6 @@
 # Bugable
 
-Shared Winner of [Chalmers AI Society](https://www.chalmersaisociety.com/) x [GoWest](https://www.gowest.se/) [24H Hackathon 2026](https://www.investingothenburg.com/events/cais-x-gowest-hackathon).
+Shared Winner of [Chalmers AI Society](https://www.chalmersaisociety.com/) x [GoWest](https://www.gowest.capital/mobile) [24H Hackathon 2026](https://www.investingothenburg.com/events/cais-x-gowest-hackathon).
 
 ## Team "Claude Warriors"
 
