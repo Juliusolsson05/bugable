@@ -2,15 +2,10 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export function Demo() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
-
-  // Replace with your YouTube video ID when ready
-  const YOUTUBE_ID: string | null = null;
 
   return (
     <section
@@ -39,42 +34,22 @@ export function Demo() {
           transition={{ duration: 0.45, delay: 0.05 }}
           className="max-w-4xl mx-auto"
         >
-          <div className="aspect-video rounded-xl border border-border bg-card overflow-hidden">
-            {YOUTUBE_ID ? (
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div style={{ position: "relative", paddingBottom: "64.98%", height: 0 }}>
               <iframe
-                className="w-full h-full"
-                src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}`}
-                title="Bugable demo video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                src="https://www.loom.com/embed/33d03c39380b440eb8910a36a9a8b0c0"
+                frameBorder="0"
                 allowFullScreen
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                }}
               />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center p-8">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                    <Play className="h-6 w-6 text-primary" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-5">
-                    Demo video coming soon.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button asChild>
-                      <a href="/#beta">Get beta access</a>
-                    </Button>
-                    <Button variant="outline" asChild>
-                      <a href="/contact">Book a live demo</a>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
-
-          <p className="mt-4 text-xs text-muted-foreground text-center">
-            {YOUTUBE_ID
-              ? "Using youtube-nocookie for a privacy-friendlier embed."
-              : "Video will be added when available."}
-          </p>
         </motion.div>
       </div>
     </section>
